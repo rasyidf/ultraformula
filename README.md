@@ -1,4 +1,7 @@
-# Formula Playground
+# Ultra Formula Playground
+
+![image](https://github.com/user-attachments/assets/764f2bdb-9361-45d2-819f-8eed163e49ff)
+
 
 This is a playground for testing out different formulas and functions in React,
 
