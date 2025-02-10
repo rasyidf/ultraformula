@@ -31,7 +31,7 @@ export function MainSidebar() {
 
       <SidebarHeader className="h-auto px-4 flex items-center">
         <h2 className="text-lg font-semibold">Ultraformula</h2>
-        <div className="space-y-2">
+        <div className="space-y-2 w-full">
           <Label htmlFor="formulaType">Formula Type</Label>
           <Select value={state.formulaType} onValueChange={setFormulaType}>
             <SelectTrigger id="formulaType">
