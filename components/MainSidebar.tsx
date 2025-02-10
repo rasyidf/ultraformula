@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +8,7 @@ import { useSuperformulaContext } from "@/contexts/FormulaContext";
 import { DicesIcon } from "lucide-react";
 import { ParameterControl } from "./ParameterControl";
 import { Button } from "./ui/button";
+import { SidebarContent, SidebarFooter, SidebarHeader } from "./ui/sidebar";
 
 
 export function MainSidebar() {
@@ -27,11 +27,10 @@ export function MainSidebar() {
 
   const metadata = getFormulaMetadata();
   return (
-    <Card className="w-full lg:w-1/4 h-auto lg:h-[calc(100vh-2rem)] overflow-y-auto">
-      <CardHeader>
-        <CardTitle>Ultraformula</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <>
+
+      <SidebarHeader className="h-auto px-4 flex items-center">
+        <h2 className="text-lg font-semibold">Ultraformula</h2>
         <div className="space-y-2">
           <Label htmlFor="formulaType">Formula Type</Label>
           <Select value={state.formulaType} onValueChange={setFormulaType}>
@@ -47,39 +46,48 @@ export function MainSidebar() {
             </SelectContent>
           </Select>
         </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <div className="w-full p-4 h-auto lg:h-[calc(100vh-2rem)] overflow-y-auto ">
 
-        <div className="flex justify-between">
-          <Button onClick={randomizeParams}>
-            <DicesIcon />
-            Randomize Params</Button>
+          <div className="flex justify-between">
+            <Button onClick={randomizeParams}>
+              <DicesIcon />
+              Randomize Params</Button>
+          </div>
+          <div className="space-y-4">
+            {Object.entries(metadata.parameters).map(([key, param]) => (
+              <ParameterControl
+                key={key}
+                paramKey={key}
+                metadata={param}
+                value={state.params[key]}
+                onChange={(v) => updateParam(key, v)}
+                isLocked={state.lockedParams.has(key)}
+                onToggleLock={() => toggleParamLock(key)}
+              />
+            ))}
+
+            <div className="flex items-center space-x-2">
+              <Switch id="autoRotate" checked={state.autoRotate} onCheckedChange={setAutoRotate} />
+              <Label htmlFor="autoRotate">Auto Rotate</Label>
+            </div>
+
+          </div>
         </div>
-
-        {Object.entries(metadata.parameters).map(([key, param]) => (
-          <ParameterControl
-            key={key}
-            paramKey={key}
-            metadata={param}
-            value={state.params[key]}
-            onChange={(v) => updateParam(key, v)}
-            isLocked={state.lockedParams.has(key)}
-            onToggleLock={() => toggleParamLock(key)}
-          />
-        ))}
-
-        <div className="flex items-center space-x-2">
-          <Switch id="autoRotate" checked={state.autoRotate} onCheckedChange={setAutoRotate} />
-          <Label htmlFor="autoRotate">Auto Rotate</Label>
-        </div>
+      </SidebarContent>
+      <SidebarFooter className="h-auto px-4 flex items-center">
 
         <div className="space-y-2">
           <Label htmlFor="backgroundColor">Background Color</Label>
           <div className="flex items-center space-x-2">
-            <Input
+            <input
               id="backgroundColor"
               type="color"
               value={state.backgroundColor}
               onChange={(e) => setBackgroundColor(e.target.value)}
-              className="w-12 h-12 p-1 rounded"
+              className="w-8 h-8 rounded-full border-none"
+              style={{ backgroundColor: state.backgroundColor }}
             />
             <Input
               type="text"
@@ -92,12 +100,13 @@ export function MainSidebar() {
         <div className="space-y-2">
           <Label htmlFor="meshColor">Mesh Color</Label>
           <div className="flex items-center space-x-2">
-            <Input
+            <input
               id="meshColor"
               type="color"
               value={state.meshColor}
               onChange={(e) => setMeshColor(e.target.value)}
-              className="w-12 h-12 p-1 rounded"
+              className="w-8 h-8 rounded-full border-none outline-none shadow-none"
+              style={{ backgroundColor: state.meshColor }}
             />
             <Input
               type="text"
@@ -107,7 +116,9 @@ export function MainSidebar() {
             />
           </div>
         </div>
-      </CardContent>
-    </Card>
+        <span className="text-sm text-muted-foreground">v1.0.0</span>
+      </SidebarFooter>
+    </>
+
   );
 }

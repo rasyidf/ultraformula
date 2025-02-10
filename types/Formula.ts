@@ -6,6 +6,7 @@ export interface ParameterMetadata {
   min: number;
   max: number;
   step: number;
+  default?: number;
   isLocked?: boolean;
 }
 
