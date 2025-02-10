@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Formula Playground
 
-## Getting Started
+This is a playground for testing out different formulas and functions in React,
 
-First, run the development server:
+I have created a simple interface where you can input a formula and see the result of that formula. the current available functions are:
+- Gielis Superformula
+- Perlin Noise Terrain Generation
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Gielis Superformula
+The Gielis Superformula is a mathematical formula that can be used to generate a wide variety of shapes. The formula is defined as follows:
+
+```
+r = (abs(1/a * cos(m * theta / 4)))^n1 + (abs(1/b * sin(m * theta / 4)))^n2
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Where:
+- `r` is the radius of the shape at a given angle `theta`
+- `a` and `b` are parameters that control the shape of the formula
+- `m` is a parameter that controls the number of lobes in the shape
+- `n1` and `n2` are parameters that control the sharpness of the lobes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can experiment with different values of `a`, `b`, `m`, `n1`, and `n2` to see how they affect the shape of the formula.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Perlin Noise Terrain Generation
+Perlin noise is a type of gradient noise that is commonly used in computer graphics to generate natural-looking textures, terrain, and other procedural content. It was developed by Ken Perlin in the 1980s and has since become a staple of procedural generation algorithms.
 
-## Learn More
+In this playground, you can experiment with generating 2D terrain using Perlin noise. You can adjust the parameters of the Perlin noise function to see how they affect the resulting terrain. You can also adjust the color scheme and other settings to customize the appearance of the terrain.
 
-To learn more about Next.js, take a look at the following resources:
+## How to use
+To use the formula playground, simply slide the sliders to adjust the parameters of the formula you want to test. or click randomize to get a random set of parameters.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The formula will be evaluated, and the result will be displayed on the screen. You can experiment with different formulas and functions to see how they behave.
