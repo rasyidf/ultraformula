@@ -1,31 +1,6 @@
 import { useState } from 'react';
-import { formulas } from './formulas';
-
-export interface ParameterMetadata {
-  name: string;
-  description: string;
-  min: number;
-  max: number;
-  step: number;
-  isLocked: boolean;
-}
-
-export interface FormulaMetadata {
-  name: string;
-  description: string;
-  parameters: Record<string, ParameterMetadata>;
-}
-
-export interface FormulaParams {
-  [key: string]: number;
-}
-
-export type FormulaFunction = (params: FormulaParams) => number;
-
-export interface Formula {
-  metadata: FormulaMetadata;
-  calculate: FormulaFunction;
-}
+import { FormulaParams } from '@/types/Formula';
+import { formulaRegistry, getFormula } from '@/formulas';
 
 export interface SuperformulaState {
   formulaType: string;
@@ -77,7 +52,7 @@ function useFormula() {
   };
 
   const randomizeParams = () => {
-    const formula = formulas[state.formulaType];
+    const formula = getFormula(state.formulaType);
     setState(prev => {
       const newParams = { ...prev.params };
       Object.entries(formula.metadata.parameters).forEach(([key, metadata]) => {
@@ -89,7 +64,9 @@ function useFormula() {
     });
   };
 
-  const getFormulaMetadata = () => formulas[state.formulaType].metadata;
+  const getFormulaMetadata = () => {
+    return getFormula(state.formulaType).metadata;
+  };
 
   const updateParam = (key: keyof FormulaParams, value: number) => {
     setState(prev => ({
@@ -99,7 +76,7 @@ function useFormula() {
   };
 
   const calculateFormula = (params: FormulaParams) => {
-    const formula = formulas[state.formulaType];
+    const formula = getFormula(state.formulaType);
     return formula.calculate({ ...state.params, phi: Math.PI / 180, ...params });
   };
 
@@ -152,7 +129,7 @@ function useFormula() {
 
   return {
     state,
-    formulas,
+    formulas: formulaRegistry,
     getFormulaMetadata,
     updateParam,
     toggleParamLock,

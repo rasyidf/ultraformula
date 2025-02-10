@@ -1,10 +1,11 @@
-import { createContext, useContext, ReactNode } from 'react';
-import { useSuperformula, SuperformulaState, FormulaParams, ParameterMetadata, Formula } from '../hooks/useFormula';
+import { Formula, FormulaParams, ParameterMetadata } from '@/types/Formula';
+import { createContext, ReactNode, useContext } from 'react';
+import { SuperformulaState, useSuperformula, } from '../hooks/useFormula';
 
 interface SuperformulaContextType {
   state: SuperformulaState;
   formulas: Record<string, Formula>;
-  getFormulaMetadata: () => { name: string; description: string; parameters: Record<string, ParameterMetadata> };
+  getFormulaMetadata: () => { name: string; description: string; parameters: Record<string, ParameterMetadata>; };
   updateParam: (key: keyof FormulaParams, value: number) => void;
   toggleParamLock: (paramName: string) => void;
   randomizeParams: () => void;
@@ -22,7 +23,7 @@ interface SuperformulaContextType {
 
 const SuperformulaContext = createContext<SuperformulaContextType | null>(null);
 
-export function FormulaProvider({ children }: { children: ReactNode }) {
+export function FormulaProvider({ children }: { children: ReactNode; }) {
   const superformula = useSuperformula();
   return (
     <SuperformulaContext.Provider value={superformula}>

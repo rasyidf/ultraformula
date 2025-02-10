@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { LockClosedIcon, LockOpen1Icon } from "@radix-ui/react-icons";
-import { ParameterMetadata } from "../hooks/useFormula";
+import { ParameterMetadata } from "@/types/Formula";
 
 interface ParameterControlProps {
   paramKey: string;
