@@ -57,7 +57,7 @@ function useFormula() {
       const newParams = { ...prev.params };
       Object.entries(formula.metadata.parameters).forEach(([key, metadata]) => {
         if (!prev.lockedParams.has(key)) {
-          newParams[key] = Math.random() * (metadata.max - metadata.min) + metadata.min;
+          newParams[key] = Math.random() * ((metadata?.max ?? 100) - (metadata?.min ?? 0)) + (metadata?.min ?? 0);
         }
       });
       return { ...prev, params: newParams };
