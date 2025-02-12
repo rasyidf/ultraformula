@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { FormulaMetadata, FormulaParams } from "../types/Formula";
 import { BaseFormula } from "./BaseFormula";
 // Assume WorleyNoise is implemented similar to your PerlinNoise
-import { WorleyNoise } from "./CellularNoiseFormula.WorleyNoise";
+import { WorleyNoise } from "./noises/WorleyNoise";
 
 export class CellularNoiseFormula extends BaseFormula {
   metadata: FormulaMetadata = {

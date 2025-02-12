@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { FormulaMetadata, FormulaParams } from "../types/Formula";
 import { BaseFormula } from "./BaseFormula";
-import { PerlinNoise } from "./TerrainFormula.PerlinNoise";
+import { PerlinNoise } from "./noises/PerlinNoise";
 
 export class TerrainFormula extends BaseFormula {
   metadata: FormulaMetadata = {
