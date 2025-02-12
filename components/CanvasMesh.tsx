@@ -11,7 +11,7 @@ interface SuperformulaMeshProps {
   scale?: number;
 }
 
-export const SuperformulaMesh: React.FC<SuperformulaMeshProps> = ({
+export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
   params,
   formula,
   autoRotate,

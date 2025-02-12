@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Slider } from "./ui/slider";
+import { Switch } from "./ui/switch";
 
 export function CameraControls() {
   const {
@@ -12,6 +13,8 @@ export function CameraControls() {
     setPointLightIntensity,
     setPointLightPosition,
     setCameraPosition,
+    showAxes,
+    setShowAxes,
   } = useSuperformulaContext();
   return (
     <Card>
@@ -82,7 +85,13 @@ export function CameraControls() {
               />
             </div>
           ))}
+
+          <div className="flex items-center space-x-2">
+            <Switch id="showAxes" checked={showAxes} onCheckedChange={(x) => setShowAxes(x)} />
+            <Label htmlFor="showAxes">Show Axes</Label>
+          </div>
         </div>
+
       </CardContent>
     </Card>
   );

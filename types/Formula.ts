@@ -2,12 +2,15 @@ import * as THREE from "three";
 
 export interface ParameterMetadata {
   name: string;
-  description: string;
-  min: number;
-  max: number;
-  step: number;
+  description?: string;
+  min?: number;
+  max?: number;
+  step?: number;
   default?: number;
   isLocked?: boolean;
+  // New properties for advanced controls:
+  controlType?: 'toggle' | 'input' | 'select' | 'slider';
+  choices?: number[];
 }
 
 export interface FormulaMetadata {

@@ -23,6 +23,8 @@ interface SuperformulaContextType {
   setCameraPosition: (axis: 'x' | 'y' | 'z', value: number) => void;
   addFormula: (formula: string) => void;
   removeFormula: (index: number) => void;
+  showAxes: boolean;
+  setShowAxes: (value: boolean) => void;
 }
 
 const SuperformulaContext = createContext<SuperformulaContextType | null>(null);
@@ -30,6 +32,7 @@ const SuperformulaContext = createContext<SuperformulaContextType | null>(null);
 export function FormulaProvider({ children }: { children: ReactNode; }) {
   const superformula = useSuperformula();
   const [formulas, setFormulas] = useState<string[]>([]);
+  const [showAxes, setShowAxes] = useState(false);
 
   const addFormula = (formula: string) => {
     setFormulas([...formulas, formula]);
@@ -40,7 +43,13 @@ export function FormulaProvider({ children }: { children: ReactNode; }) {
   };
 
   return (
-    <SuperformulaContext.Provider value={{ ...superformula, addFormula, removeFormula }}>
+    <SuperformulaContext.Provider value={{
+      ...superformula,
+      addFormula,
+      removeFormula,
+      showAxes,
+      setShowAxes,
+    }}>
       {children}
     </SuperformulaContext.Provider>
   );
