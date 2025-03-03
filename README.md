@@ -1,126 +1,100 @@
-# Ultra Formula Playground
+# Welcome to React Router!
 
-![image](https://github.com/user-attachments/assets/764f2bdb-9361-45d2-819f-8eed163e49ff)
+A modern, production-ready template for building full-stack React applications using React Router.
 
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
 
-This is a playground for testing out different formulas and functions in React,
+## Features
 
-I have created a simple interface where you can input a formula and see the result of that formula. the current available functions are:
-- Gielis Superformula
-- Perlin Noise Terrain Generation
+- 🚀 Server-side rendering
+- ⚡️ Hot Module Replacement (HMR)
+- 📦 Asset bundling and optimization
+- 🔄 Data loading and mutations
+- 🔒 TypeScript by default
+- 🎉 TailwindCSS for styling
+- 📖 [React Router docs](https://reactrouter.com/)
 
-## Gielis Superformula
-The Gielis Superformula is a mathematical formula that can be used to generate a wide variety of shapes. The formula is defined as follows:
+## Getting Started
 
-```
-r = (abs(1/a * cos(m * theta / 4)))^n1 + (abs(1/b * sin(m * theta / 4)))^n2
-```
+### Installation
 
-Where:
-- `r` is the radius of the shape at a given angle `theta`
-- `a` and `b` are parameters that control the shape of the formula
-- `m` is a parameter that controls the number of lobes in the shape
-- `n1` and `n2` are parameters that control the sharpness of the lobes
+Install the dependencies:
 
-You can experiment with different values of `a`, `b`, `m`, `n1`, and `n2` to see how they affect the shape of the formula.
-
-## Perlin Noise Terrain Generation
-Perlin noise is a type of gradient noise that is commonly used in computer graphics to generate natural-looking textures, terrain, and other procedural content. It was developed by Ken Perlin in the 1980s and has since become a staple of procedural generation algorithms.
-
-In this playground, you can experiment with generating 2D terrain using Perlin noise. You can adjust the parameters of the Perlin noise function to see how they affect the resulting terrain. You can also adjust the color scheme and other settings to customize the appearance of the terrain.
-
-## Gyroid
-The Gyroid is a triply periodic minimal surface that can be approximated by the formula:
-
-```
-cos(x) * sin(y) + cos(y) * sin(z) + cos(z) * sin(x) = 0
+```bash
+npm install
 ```
 
-This infinite surface divides space into two intertwined regions. You can adjust the scale and thickness parameters to modify the appearance of the gyroid structure.
+### Development
 
-## Cellular Noise
-Cellular noise (also known as Worley noise) generates patterns that resemble cellular textures. The formula calculates distances between random feature points:
+Start the development server with HMR:
 
-```
-F(x,y) = min(distance to nearest feature point)
-```
-
-Parameters you can adjust:
-- Cell density
-- Distance function (Euclidean, Manhattan, etc.)
-- Jitter amount
-
-## Sine Interference
-This formula creates interference patterns by combining multiple sine waves:
-
-```
-f(x,y) = sin(ax + φ1) * sin(by + φ2)
+```bash
+npm run dev
 ```
 
-Where:
-- a and b control the frequency of waves
-- φ1 and φ2 are phase shifts
-- Additional terms can be added for more complex patterns
+Your application will be available at `http://localhost:5173`.
 
-## Möbius Transform
-The Möbius transformation is a complex function of the form:
+## Building for Production
 
-```
-f(z) = (az + b)/(cz + d)
+Create a production build:
+
+```bash
+npm run build
 ```
 
-Where:
-- z is a complex number
-- a, b, c, d are complex constants
-- ad - bc ≠ 0
+## Deployment
 
-You can experiment with different values of a, b, c, and d to create various conformal mappings.
+### Docker Deployment
 
-## How to use
-To use the formula playground, simply slide the sliders to adjust the parameters of the formula you want to test. or click randomize to get a random set of parameters.
+This template includes three Dockerfiles optimized for different package managers:
 
-The formula will be evaluated, and the result will be displayed on the screen. You can experiment with different formulas and functions to see how they behave.
+- `Dockerfile` - for npm
+- `Dockerfile.pnpm` - for pnpm
+- `Dockerfile.bun` - for bun
 
-## Adding New Formulas
-To add a new formula, create a new class that extends `BaseFormula` in the `formulas` directory:
+To build and run using Docker:
 
-```typescript
-import { BaseFormula } from "./BaseFormula";
-import { FormulaMetadata, FormulaParams } from "../types/Formula";
-import * as THREE from "three";
+```bash
+# For npm
+docker build -t my-app .
 
-export class MyNewFormula extends BaseFormula {
-  metadata: FormulaMetadata = {
-    name: "My Formula",
-    parameters: [
-      { name: "param1", min: 0, max: 10, default: 5 },
-      { name: "param2", min: -1, max: 1, default: 0 },
-    ]
-  };
+# For pnpm
+docker build -f Dockerfile.pnpm -t my-app .
 
-  calculate(params: FormulaParams): number {
-    // Implement your formula calculation here
-    return params.param1 * Math.sin(params.param2);
-  }
+# For bun
+docker build -f Dockerfile.bun -t my-app .
 
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    // Create THREE.js geometry for visualization
-    const geometry = new THREE.BufferGeometry();
-    // Add vertices, faces, etc.
-    return geometry;
-  }
-}
+# Run the container
+docker run -p 3000:3000 my-app
 ```
 
-Then register your formula in `formulas/index.ts`:
+The containerized application can be deployed to any platform that supports Docker, including:
 
-```typescript
-import { MyNewFormula } from "./MyNewFormula";
+- AWS ECS
+- Google Cloud Run
+- Azure Container Apps
+- Digital Ocean App Platform
+- Fly.io
+- Railway
 
-export const formulaRegistry: Record<string, Formula> = {
-  // ...existing formulas...
-  myFormula: new MyNewFormula(),
-};
+### DIY Deployment
+
+If you're familiar with deploying Node applications, the built-in app server is production-ready.
+
+Make sure to deploy the output of `npm run build`
+
+```
+├── package.json
+├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
+├── build/
+│   ├── client/    # Static assets
+│   └── server/    # Server-side code
 ```
 
-The formula will automatically appear in the playground with its parameters.
+## Styling
+
+This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+
+---
+
+Built with ❤️ using React Router.

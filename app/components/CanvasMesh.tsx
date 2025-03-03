@@ -1,0 +1,38 @@
+import { useFrame } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
+import * as THREE from "three";
+import type { FormulaParams, Formula } from "~/types/Formula";
+
+interface SuperformulaMeshProps {
+  params: FormulaParams;
+  formula: Formula;
+  autoRotate: boolean;
+  color: string;
+  scale?: number;
+}
+
+export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
+  params,
+  formula,
+  autoRotate,
+  color,
+  scale = 1
+}) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  const geometry = useMemo(() => {
+    return formula.createGeometry(params);
+  }, [params, formula]);
+
+  useFrame(() => {
+    if (autoRotate && meshRef.current) {
+      meshRef.current.rotation.y += 0.01;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} geometry={geometry} scale={scale}>
+      <meshStandardMaterial color={color} wireframe />
+    </mesh>
+  );
+};
