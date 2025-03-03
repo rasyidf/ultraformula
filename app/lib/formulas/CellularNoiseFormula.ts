@@ -8,6 +8,7 @@ export class CellularNoiseFormula extends BaseFormula {
   metadata: FormulaMetadata = {
     name: "Cellular Pattern",
     description: "Worley noise cellular structure",
+    supportedDimensions: ['3d'],
     parameters: {
       scale: {
         name: "Scale",

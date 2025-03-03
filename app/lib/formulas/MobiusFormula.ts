@@ -4,92 +4,132 @@ import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
 
 export class MobiusFormula extends BaseFormula {
   metadata: FormulaMetadata = {
-    name: "Möbius Strip",
-    description: "One-sided minimal surface with half-twist",
+    name: "Mobius Strip",
+    description: "Creates a Mobius strip with parametric adjustments",
+    supportedDimensions: ['2d', '3d'],
     parameters: {
       radius: {
         name: "Radius",
+        description: "Radius of the Mobius strip",
         min: 0.5,
-        max: 10,
+        max: 5,
         step: 0.1,
-        description: "Main ring radius",
-        isLocked: false
+        default: 2
       },
       width: {
         name: "Width",
+        description: "Width of the Mobius strip",
         min: 0.1,
         max: 2,
         step: 0.1,
-        description: "Strip width",
-        isLocked: false
-      },
-      subdivisions: {
-        name: "Subdivisions",
-        min: 3,
-        max: 128,
-        step: 1,
-        description: "Radial divisions",
-        isLocked: false
+        default: 1
       },
       twist: {
         name: "Twist",
-        min: 0.5,
-        max: 3,
-        step: 0.5,
         description: "Number of half-twists",
-        isLocked: false
+        min: 1,
+        max: 10,
+        step: 1,
+        default: 1
       }
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  calculate(_params: FormulaParams): number {
-    // Not used for parametric surface, but required by interface
-    return 0;
+  calculate(params: FormulaParams): number {
+    const { radius, width } = params;
+    // This is not really a radius calculation, but we return a value
+    // to satisfy the interface requirements
+    return radius * width;
   }
 
   createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    const { radius = 2, width = 0.5, subdivisions = 64, twist = 1 } = params;
-    const vertices = [];
-    const indices = [];
-    const widthSegments = Math.max(2, Math.floor(subdivisions / 16));
-
-    // Parametric surface generation
-    for (let u = 0; u <= subdivisions; u++) {
-      const t = (u / subdivisions) * Math.PI * 2;
-      for (let v = 0; v <= widthSegments; v++) {
-        const w = (v / widthSegments - 0.5) * width;
-
-        // Möbius strip parametric equations
-        const x = (radius + w * Math.cos(twist * t / 2)) * Math.cos(t);
-        const y = (radius + w * Math.cos(twist * t / 2)) * Math.sin(t);
-        const z = w * Math.sin(twist * t / 2);
-
-        vertices.push(x, y, z);
+    const { radius, width, twist } = params;
+    const segments = 100;
+    const sides = 20;
+    
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
+    
+    // Create vertices
+    for (let i = 0; i <= segments; i++) {
+      const u = i / segments;
+      const angle = u * Math.PI * 2;
+      
+      for (let j = 0; j <= sides; j++) {
+        const v = j / sides;
+        const w = v - 0.5; // Range from -0.5 to 0.5
+        
+        // Calculate the position on the Mobius strip
+        const x = (radius + w * width * Math.cos(twist * angle / 2)) * Math.cos(angle);
+        const y = (radius + w * width * Math.cos(twist * angle / 2)) * Math.sin(angle);
+        const z = w * width * Math.sin(twist * angle / 2);
+        
+        vertices.push(x, z, y); // Swap y and z to lay the strip horizontally
+        
+        // Calculate normal vector (simplified)
+        const nx = Math.cos(angle);
+        const ny = Math.sin(angle);
+        const nz = 0;
+        
+        normals.push(nx, nz, ny);
+        
+        // UV coordinates
+        uvs.push(u, v);
       }
     }
-
-    // Generate indices for triangle mesh
-    for (let u = 0; u < subdivisions; u++) {
-      for (let v = 0; v < widthSegments; v++) {
-        const a = u * (widthSegments + 1) + v;
-        const b = (u + 1) * (widthSegments + 1) + v;
-        const c = (u + 1) * (widthSegments + 1) + v + 1;
-        const d = u * (widthSegments + 1) + v + 1;
-
-        indices.push(a, b, d);
-        indices.push(b, c, d);
+    
+    // Create indices
+    for (let i = 0; i < segments; i++) {
+      for (let j = 0; j < sides; j++) {
+        const a = i * (sides + 1) + j;
+        const b = a + 1;
+        const c = a + (sides + 1);
+        const d = c + 1;
+        
+        indices.push(a, b, c);
+        indices.push(c, b, d);
       }
     }
-
+    
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(vertices, 3)
-    );
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
+    
     return geometry;
+  }
+
+  // 2D methods for Mobius strip visualization
+  calculateCartesian2D(x: number, params: FormulaParams): number {
+    const { radius, width, twist } = params;
+    
+    // For 2D visualization, we'll create a flattened view of the Mobius strip
+    // by showing a sinusoidal wave that wraps back on itself
+    const angle = (x + 5) * Math.PI / 5; // Map x from -5 to 5 to angle from 0 to 2π
+    
+    // Calculate the height of the strip at this angle
+    const y = width * Math.sin(twist * angle / 2);
+    
+    return y;
+  }
+
+  createPlotData(params: FormulaParams, resolution: number = 200): { x: number[], y: number[] } {
+    const x: number[] = [];
+    const y: number[] = [];
+    
+    // Generate x values from -5 to 5
+    const range = 10;
+    const step = range / resolution;
+    
+    for (let i = 0; i <= resolution; i++) {
+      const xVal = -range/2 + i * step;
+      x.push(xVal);
+      y.push(this.calculateCartesian2D(xVal, params));
+    }
+    
+    return { x, y };
   }
 }

@@ -1,41 +1,46 @@
 import * as THREE from "three";
 
 export class MarchingCubes {
-  generateGeometry(grid: Float32Array, resolution: number, size: number, step: number, vertices: number[], normals: number[]): void {
+  generateGeometry(
+    grid: Float32Array,
+    resolution: number,
+    size: number,
+    step: number,
+    vertices: number[],
+    normals: number[],
+    bufferSize?: number
+  ): void {
+    const gridSize = bufferSize || resolution + 1;
+
     for (let x = 0; x < resolution; x++) {
       for (let y = 0; y < resolution; y++) {
         for (let z = 0; z < resolution; z++) {
-          const cubeIndex = this.getCubeIndex(x, y, z, resolution, grid);
-          if (cubeIndex === 0 || cubeIndex === 255) continue; // Skip empty cubes
+          const cubeIndex = this.getCubeIndex(x, y, z, gridSize, grid);
+          if (cubeIndex === 0 || cubeIndex === 255) continue;
 
           const edges = this.getEdges(cubeIndex);
           const vertList: THREE.Vector3[] = [];
 
-          // Interpolate vertices along edges
           for (let i = 0; i < 12; i++) {
             if (edges & (1 << i)) {
-              const v1 = this.getEdgePoint(i, x, y, z, resolution, step, size, grid);
+              const v1 = this.getEdgePoint(i, x, y, z, gridSize, step, size, grid);
               vertList.push(v1);
             }
           }
 
-          // Add triangles to the geometry
           for (let i = 0; i <= vertList.length - 3; i += 3) {
             const v1 = vertList[i];
             const v2 = vertList[i + 1];
             const v3 = vertList[i + 2];
 
+            // Calculate the normal using cross product
+            const edge1 = new THREE.Vector3().subVectors(v2, v1);
+            const edge2 = new THREE.Vector3().subVectors(v3, v1);
+            const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+
             vertices.push(v1.x, v1.y, v1.z);
             vertices.push(v2.x, v2.y, v2.z);
             vertices.push(v3.x, v3.y, v3.z);
-
-            // Compute normals
-            const normal = new THREE.Vector3()
-              .crossVectors(
-                new THREE.Vector3(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z),
-                new THREE.Vector3(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z)
-              )
-              .normalize();
 
             normals.push(normal.x, normal.y, normal.z);
             normals.push(normal.x, normal.y, normal.z);
@@ -46,13 +51,13 @@ export class MarchingCubes {
     }
   }
 
-  private getCubeIndex(x: number, y: number, z: number, resolution: number, grid: Float32Array): number {
+  private getCubeIndex(x: number, y: number, z: number, gridSize: number, grid: Float32Array): number {
     let cubeIndex = 0;
     for (let i = 0; i < 8; i++) {
       const dx = i & 1;
       const dy = (i >> 1) & 1;
       const dz = (i >> 2) & 1;
-      const idx = (x + dx) + (y + dy) * (resolution + 1) + (z + dz) * (resolution + 1) * (resolution + 1);
+      const idx = (x + dx) + (y + dy) * gridSize + (z + dz) * gridSize * gridSize;
       if (grid[idx] <= 0) cubeIndex |= 1 << i;
     }
     return cubeIndex;
@@ -81,40 +86,33 @@ export class MarchingCubes {
     return edgeTable[cubeIndex];
   }
 
-  private getEdgePoint(edge: number, x: number, y: number, z: number, resolution: number, step: number, size: number, grid: Float32Array): THREE.Vector3 {
-    const edgeVertices = [
-      [0, 0, 0],
-      [1, 0, 0],
-      [1, 1, 0],
-      [0, 1, 0],
-      [0, 0, 1],
-      [1, 0, 1],
-      [1, 1, 1],
-      [0, 1, 1],
+  private getEdgePoint(
+    edge: number,
+    x: number,
+    y: number,
+    z: number,
+    gridSize: number,
+    step: number,
+    size: number,
+    grid: Float32Array
+  ): THREE.Vector3 {
+    const edgeToVerts = [
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      [0, 4], [1, 5], [2, 6], [3, 7]
+    ];
+    
+    const vertToPos = [
+      [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+      [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]
     ];
 
-    const edgePairs = [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 0],
-      [4, 5],
-      [5, 6],
-      [6, 7],
-      [7, 4],
-      [0, 4],
-      [1, 5],
-      [2, 6],
-      [3, 7],
-    ];
+    const [v1, v2] = edgeToVerts[edge];
+    const p1 = vertToPos[v1];
+    const p2 = vertToPos[v2];
 
-    const [v1, v2] = edgePairs[edge];
-    const p1 = edgeVertices[v1];
-    const p2 = edgeVertices[v2];
-
-    const dimension = resolution + 1;
-    const idx1 = (x + p1[0]) + (y + p1[1]) * dimension + (z + p1[2]) * dimension * dimension;
-    const idx2 = (x + p2[0]) + (y + p2[1]) * dimension + (z + p2[2]) * dimension * dimension;
+    const idx1 = (x + p1[0]) + (y + p1[1]) * gridSize + (z + p1[2]) * gridSize * gridSize;
+    const idx2 = (x + p2[0]) + (y + p2[1]) * gridSize + (z + p2[2]) * gridSize * gridSize;
 
     const val1 = grid[idx1];
     const val2 = grid[idx2];
@@ -125,27 +123,31 @@ export class MarchingCubes {
     const py = y + p1[1] + t * (p2[1] - p1[1]);
     const pz = z + p1[2] + t * (p2[2] - p1[2]);
 
-    return new THREE.Vector3(-size + px * step, -size + py * step, -size + pz * step);
+    return new THREE.Vector3(
+      -size + px * step,
+      -size + py * step,
+      -size + pz * step
+    );
   }
 
-  unifyVertices(
-    vertices: number[],
-    normals: number[]
-  ): { vertices: number[]; normals: number[] } {
-    const map = new Map<string, number>();
+  unifyVertices(vertices: number[], normals: number[]): { vertices: number[]; normals: number[] } {
+    const vertexMap = new Map<string, { index: number; normal: THREE.Vector3 }>();
     const newVerts: number[] = [];
     const newNorms: number[] = [];
-    let index = 0;
+    const indices: number[] = [];
 
     for (let i = 0; i < vertices.length; i += 3) {
       const key = `${vertices[i].toFixed(5)},${vertices[i + 1].toFixed(5)},${vertices[i + 2].toFixed(5)}`;
-      if (!map.has(key)) {
-        map.set(key, index);
+      
+      if (!vertexMap.has(key)) {
+        const index = newVerts.length / 3;
         newVerts.push(vertices[i], vertices[i + 1], vertices[i + 2]);
-        newNorms.push(normals[i], normals[i + 1], normals[i + 2]);
-        index++;
+        const normal = new THREE.Vector3(normals[i], normals[i + 1], normals[i + 2]);
+        vertexMap.set(key, { index, normal });
+        newNorms.push(normal.x, normal.y, normal.z);
       }
     }
+
     return { vertices: newVerts, normals: newNorms };
   }
 }

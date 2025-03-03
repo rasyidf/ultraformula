@@ -2,22 +2,20 @@ import { useState } from 'react';
 import { formulaRegistry, getFormula } from '~/lib/formulas';
 import type { FormulaParams } from '~/types/Formula';
 
-export interface SuperformulaState {
+export interface FormulaState {
   formulaType: string;
   params: FormulaParams;
   lockedParams: Set<string>;
-  autoRotate: boolean;
-  backgroundColor: string;
   meshColor: string;
-  scale: number;
-  ambientLightIntensity: number;
-  pointLightIntensity: number;
-  pointLightPosition: [number, number, number];
-  cameraPosition: [number, number, number];
+  materialType: "standard" | "wireframe" | "wobble" | "transmission" | "reflector";
+  wireframe: boolean;
+  enableFloat: boolean;
+  showOutlines: boolean;
+  outlineColor: string;
 }
 
-function useFormula() {
-  const [state, setState] = useState<SuperformulaState>({
+export function useFormula() {
+  const [state, setState] = useState<FormulaState>({
     formulaType: "gielis",
     params: {
       phi: 0,
@@ -29,14 +27,12 @@ function useFormula() {
       n3: 1
     },
     lockedParams: new Set(),
-    autoRotate: false,
-    backgroundColor: "#f0f0f0",
     meshColor: "#00ff00",
-    scale: 1,
-    ambientLightIntensity: 0.5,
-    pointLightIntensity: 1,
-    pointLightPosition: [10, 10, 10],
-    cameraPosition: [5, 5, 5],
+    materialType: "standard",
+    wireframe: true,
+    enableFloat: false,
+    showOutlines: false,
+    outlineColor: "#ffffff",
   });
 
   const toggleParamLock = (paramName: string) => {
@@ -82,49 +78,34 @@ function useFormula() {
 
   const setFormulaType = (type: string) => {
     setState(prev => ({ ...prev, formulaType: type }));
-    randomizeParams();
-  };
-
-  const setAutoRotate = (value: boolean) => {
-    setState(prev => ({ ...prev, autoRotate: value }));
-  };
-
-  const setBackgroundColor = (color: string) => {
-    setState(prev => ({ ...prev, backgroundColor: color }));
+    // Only randomize params if the formula type actually changed
+    if (type !== state.formulaType) {
+      randomizeParams();
+    }
   };
 
   const setMeshColor = (color: string) => {
     setState(prev => ({ ...prev, meshColor: color }));
   };
 
-  const setScale = (scale: number) => {
-    setState(prev => ({ ...prev, scale }));
+  const setMaterialType = (type: "standard" | "wireframe" | "wobble" | "transmission" | "reflector") => {
+    setState(prev => ({ ...prev, materialType: type }));
   };
 
-  const setAmbientLightIntensity = (intensity: number) => {
-    setState(prev => ({ ...prev, ambientLightIntensity: intensity }));
+  const setWireframe = (value: boolean) => {
+    setState(prev => ({ ...prev, wireframe: value }));
   };
 
-  const setPointLightIntensity = (intensity: number) => {
-    setState(prev => ({ ...prev, pointLightIntensity: intensity }));
+  const setFloatEffect = (value: boolean) => {
+    setState(prev => ({ ...prev, enableFloat: value }));
   };
 
-  const setPointLightPosition = (axis: 'x' | 'y' | 'z', value: number) => {
-    setState(prev => ({
-      ...prev,
-      pointLightPosition: prev.pointLightPosition.map((v, i) =>
-        i === (['x', 'y', 'z'].indexOf(axis)) ? value : v
-      ) as [number, number, number]
-    }));
+  const setOutlinesEnabled = (value: boolean) => {
+    setState(prev => ({ ...prev, showOutlines: value }));
   };
 
-  const setCameraPosition = (axis: 'x' | 'y' | 'z', value: number) => {
-    setState(prev => ({
-      ...prev,
-      cameraPosition: prev.cameraPosition.map((v, i) =>
-        i === (['x', 'y', 'z'].indexOf(axis)) ? value : v
-      ) as [number, number, number]
-    }));
+  const setOutlineColor = (color: string) => {
+    setState(prev => ({ ...prev, outlineColor: color }));
   };
 
   return {
@@ -136,17 +117,13 @@ function useFormula() {
     randomizeParams,
     calculateFormula,
     setFormulaType,
-    setAutoRotate,
-    setBackgroundColor,
     setMeshColor,
-    setScale,
-    setAmbientLightIntensity,
-    setPointLightIntensity,
-    setPointLightPosition,
-    setCameraPosition,
+    setMaterialType,
+    setWireframe,
+    setFloatEffect,
+    setOutlinesEnabled,
+    setOutlineColor,
   };
 }
-
-export { useFormula as useSuperformula };
 
 

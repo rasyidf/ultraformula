@@ -2,49 +2,41 @@ import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
 
-export class SineInterferenceFormula extends BaseFormula {
+export class CartesianSineFormula extends BaseFormula {
   metadata: FormulaMetadata = {
-    name: "Sine Interference",
-    description: "Creates interference patterns using sine waves",
+    name: "Cartesian Sine",
+    description: "A formula optimized for 2D Cartesian plotting with sine waves",
     supportedDimensions: ['2d', '3d'],
     parameters: {
-      frequency1: {
-        name: "Frequency 1",
-        description: "Frequency of first wave",
+      amplitude: {
+        name: "Amplitude",
+        description: "Wave height",
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+        default: 1
+      },
+      frequency: {
+        name: "Frequency",
+        description: "Wave frequency",
         min: 0.1,
         max: 10,
         step: 0.1,
-        default: 2
-      },
-      frequency2: {
-        name: "Frequency 2",
-        description: "Frequency of second wave",
-        min: 0.1,
-        max: 10,
-        step: 0.1,
-        default: 3
-      },
-      amplitude1: {
-        name: "Amplitude 1",
-        description: "Amplitude of first wave",
-        min: 0.1,
-        max: 2,
-        step: 0.1,
-        default: 0.5
-      },
-      amplitude2: {
-        name: "Amplitude 2",
-        description: "Amplitude of second wave",
-        min: 0.1,
-        max: 2,
-        step: 0.1,
-        default: 0.5
+        default: 1
       },
       phase: {
         name: "Phase",
-        description: "Phase difference",
-        min: 0,
-        max: Math.PI * 2,
+        description: "Phase shift",
+        min: -Math.PI,
+        max: Math.PI,
+        step: 0.1,
+        default: 0
+      },
+      vertical: {
+        name: "Vertical Shift",
+        description: "Vertical position adjustment",
+        min: -5,
+        max: 5,
         step: 0.1,
         default: 0
       }
@@ -52,45 +44,48 @@ export class SineInterferenceFormula extends BaseFormula {
   };
 
   calculate(params: FormulaParams): number {
-    const { frequency1, frequency2, amplitude1, amplitude2, phase, phi, theta = Math.PI / 2 } = params;
-    
-    const wave1 = amplitude1 * Math.sin(frequency1 * phi);
-    const wave2 = amplitude2 * Math.sin(frequency2 * phi + phase);
-    
-    return 1 + wave1 * Math.sin(theta) + wave2 * Math.cos(theta);
+    // This is used for 3D visualization
+    const { amplitude, frequency, phase, phi, theta = Math.PI / 2 } = params;
+    const r = 1 + amplitude * Math.sin(frequency * phi + phase);
+    return r;
   }
 
   createGeometry(params: FormulaParams): THREE.BufferGeometry {
+    // For 3D visualization, we'll create a sine wave wrapped around a cylinder
+    const { amplitude, frequency, phase } = params;
     const segments = 128;
-    const rings = 128;
+    const rings = 64;
+    const tubeRadius = 0.1;
     const maxPhi = Math.PI * 2;
-    const maxTheta = Math.PI;
     
     const vertices: number[] = [];
     const indices: number[] = [];
     const normals: number[] = [];
     const uvs: number[] = [];
 
+    // Create a tube following a sine wave path
     for (let ring = 0; ring <= rings; ring++) {
-      const theta = (ring / rings) * maxTheta;
+      const theta = (ring / rings) * maxPhi;
       const sinTheta = Math.sin(theta);
       const cosTheta = Math.cos(theta);
 
       for (let segment = 0; segment <= segments; segment++) {
         const phi = (segment / segments) * maxPhi;
         
-        const r = this.calculate({ ...params, phi, theta });
-
-        // Convert to Cartesian coordinates
-        const x = r * sinTheta * Math.cos(phi);
-        const y = r * cosTheta;
-        const z = r * sinTheta * Math.sin(phi);
-
-        // Add vertex
-        vertices.push(x, y, z);
+        // Calculate the sine wave position
+        const x = Math.cos(phi);
+        const z = Math.sin(phi);
+        const y = amplitude * Math.sin(frequency * phi + phase);
         
-        // Normals (simplified)
-        const normal = new THREE.Vector3(x, y, z).normalize();
+        // Create a circle around this point
+        const nx = tubeRadius * cosTheta * x - tubeRadius * sinTheta * z;
+        const nz = tubeRadius * sinTheta * x + tubeRadius * cosTheta * z;
+        
+        // Add vertex
+        vertices.push(nx, y + tubeRadius * cosTheta, nz);
+        
+        // Normals
+        const normal = new THREE.Vector3(nx - x, tubeRadius * cosTheta, nz - z).normalize();
         normals.push(normal.x, normal.y, normal.z);
         
         // UV coordinates
@@ -120,15 +115,10 @@ export class SineInterferenceFormula extends BaseFormula {
     return geometry;
   }
 
-  // Implement 2D methods for sine interference
+  // The 2D methods are the primary focus of this formula
   calculateCartesian2D(x: number, params: FormulaParams): number {
-    const { frequency1, frequency2, amplitude1, amplitude2, phase } = params;
-    
-    // For 2D visualization, we'll use a sine wave combination
-    const wave1 = amplitude1 * Math.sin(frequency1 * x);
-    const wave2 = amplitude2 * Math.sin(frequency2 * x + phase);
-    
-    return wave1 + wave2;
+    const { amplitude, frequency, phase, vertical } = params;
+    return amplitude * Math.sin(frequency * x + phase) + vertical;
   }
 
   createPlotData(params: FormulaParams, resolution: number = 200): { x: number[], y: number[] } {

@@ -8,7 +8,7 @@ export interface ParameterMetadata {
   step?: number;
   default?: number;
   isLocked?: boolean;
-  // New properties for advanced controls:
+  // Properties for advanced controls:
   controlType?: 'toggle' | 'input' | 'select' | 'slider';
   choices?: number[];
 }
@@ -17,6 +17,7 @@ export interface FormulaMetadata {
   name: string;
   description: string;
   parameters: Record<string, ParameterMetadata>;
+  supportedDimensions: ('2d' | '3d')[];
 }
 
 export interface FormulaParams {
@@ -28,10 +29,17 @@ export type FormulaFunction = (params: FormulaParams) => number;
 export interface Formula {
   metadata: FormulaMetadata;
   calculate: FormulaFunction;
+  // 3D specific methods
   createGeometry: (params: FormulaParams) => THREE.BufferGeometry;
+  // 2D specific methods
+  calculate2D?: (x: number, y: number, params: FormulaParams) => number;
+  calculateCartesian2D?: (x: number, params: FormulaParams) => number;
+  createPlotData?: (params: FormulaParams, resolution: number) => { x: number[]; y: number[] };
 }
 
-// export interface Formula {
-//   calculate: (params: FormulaParams) => number;
-//   createGeometry: (params: FormulaParams) => THREE.BufferGeometry;
-// }
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+export type PlotType = 'line' | 'scatter' | 'area' | 'heatmap';

@@ -1,4 +1,3 @@
-
 import type { Formula } from "~/types/Formula";
 import { CellularNoiseFormula } from "./CellularNoiseFormula";
 import { GielisFormula } from "./GielisFormula";
@@ -6,6 +5,7 @@ import { GyroidFormula } from "./GyroidFormula";
 import { MobiusFormula } from "./MobiusFormula";
 import { SineInterferenceFormula } from "./SineInterferenceFormula";
 import { TerrainFormula } from "./TerrainFormula";
+import { CartesianSineFormula } from "./CartesianSineFormula";
 
 export const formulaRegistry: Record<string, Formula> = {
   gielis: new GielisFormula(),
@@ -14,6 +14,7 @@ export const formulaRegistry: Record<string, Formula> = {
   gyroid: new GyroidFormula(),
   cellularNoise: new CellularNoiseFormula(),
   mobius: new MobiusFormula(),
+  cartesianSine: new CartesianSineFormula(),
 };
 
 export const getFormula = (type: string): Formula => {

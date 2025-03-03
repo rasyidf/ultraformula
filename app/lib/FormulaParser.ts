@@ -1,3 +1,5 @@
+import type { ParameterMetadata } from "~/types/Formula";
+
 type Token = {
   type: 'number' | 'operator' | 'function' | 'variable' | 'parenthesis';
   value: string;
@@ -10,6 +12,13 @@ export class FormulaParser {
   ]);
 
   private static readonly OPERATORS = new Set(['+', '-', '*', '/', '^', '(', ')']);
+
+  static detectParameters(formula: string): ParameterMetadata[] {
+    const tokens = this.tokenize(formula.slice(1));
+    return tokens
+      .filter(token => token.type === 'variable')
+      .map(token => ({ name: token.value, min: 0, max: 100 })); // Default min/max values
+  }
 
   static validateFormula(formula: string): boolean {
     if (!formula.startsWith('=')) {

@@ -7,6 +7,7 @@ export class TerrainFormula extends BaseFormula {
   metadata: FormulaMetadata = {
     name: "Perlin Noise Terrain",
     description: "Generate terrain using perlin noise",
+    supportedDimensions: ['3d'],
     parameters: {
       scale: {
         name: "scale",

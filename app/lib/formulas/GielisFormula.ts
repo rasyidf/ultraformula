@@ -4,56 +4,57 @@ import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
 
 export class GielisFormula extends BaseFormula {
   metadata: FormulaMetadata = {
-    name: "Gielis",
-    description: "A variation of the superformula",
+    name: "Gielis Formula",
+    description: "Generates shapes based on superformula discovered by Johan Gielis",
+    supportedDimensions: ['2d', '3d'],
     parameters: {
       a: {
-        name: "a",
-        description: "First symmetry parameter",
+        name: "A",
+        description: "Parameter a for the formula",
         min: 0.1,
-        max: 10,
+        max: 5,
         step: 0.1,
-        isLocked: false
+        default: 1
       },
       b: {
-        name: "b",
-        description: "Second symmetry parameter",
+        name: "B",
+        description: "Parameter b for the formula",
         min: 0.1,
-        max: 10,
+        max: 5,
         step: 0.1,
-        isLocked: false
+        default: 1
       },
       m: {
-        name: "m",
-        description: "Rotational symmetry",
-        min: 0,
+        name: "M",
+        description: "Number of symmetries",
+        min: 1,
         max: 20,
         step: 1,
-        isLocked: false
+        default: 6
       },
       n1: {
-        name: "n1",
-        description: "Overall shape parameter",
+        name: "N1",
+        description: "First exponent",
         min: 0.1,
-        max: 10,
+        max: 20,
         step: 0.1,
-        isLocked: false
+        default: 1
       },
       n2: {
-        name: "n2",
-        description: "Second shape parameter",
+        name: "N2",
+        description: "Second exponent",
         min: 0.1,
-        max: 10,
+        max: 20,
         step: 0.1,
-        isLocked: false
+        default: 1
       },
       n3: {
-        name: "n3",
-        description: "Third shape parameter",
+        name: "N3",
+        description: "Third exponent",
         min: 0.1,
-        max: 10,
+        max: 20,
         step: 0.1,
-        isLocked: false
+        default: 1
       }
     }
   };
@@ -66,45 +67,112 @@ export class GielisFormula extends BaseFormula {
   }
 
   createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    const uRange = { start: -Math.PI, end: Math.PI, step: 0.05 };
-    const vRange = { start: -Math.PI / 2, end: Math.PI / 2, step: 0.05 };
-    const nu = Math.floor((uRange.end - uRange.start) / uRange.step) + 1;
-    const nv = Math.floor((vRange.end - vRange.start) / vRange.step) + 1;
+    const segments = 180;
+    const rings = 180;
+    const maxPhi = Math.PI * 2;
+    const maxTheta = Math.PI;
+    
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
 
-    const vertices = [];
-    const indices = [];
+    for (let ring = 0; ring <= rings; ring++) {
+      const theta = (ring / rings) * maxTheta;
+      const sinTheta = Math.sin(theta);
+      const cosTheta = Math.cos(theta);
 
-    for (let i = 0; i < nu; i++) {
-      for (let j = 0; j < nv; j++) {
-        const u = uRange.start + i * uRange.step;
-        const v = vRange.start + j * vRange.step;
+      for (let segment = 0; segment <= segments; segment++) {
+        const phi = (segment / segments) * maxPhi;
+        
+        params.phi = phi;
+        const r = this.calculate(params);
 
-        const r1 = this.calculate({ ...params, phi: u });
-        const r2 = this.calculate({ ...params, phi: v });
+        // Convert to Cartesian coordinates
+        const x = r * sinTheta * Math.cos(phi);
+        const y = r * cosTheta;
+        const z = r * sinTheta * Math.sin(phi);
 
-        const x = r1 * Math.cos(u) * r2 * Math.cos(v);
-        const y = r1 * Math.sin(u) * r2 * Math.cos(v);
-        const z = r2 * Math.sin(v);
-
+        // Add vertex
         vertices.push(x, y, z);
+        
+        // Normals (simplified)
+        const normal = new THREE.Vector3(x, y, z).normalize();
+        normals.push(normal.x, normal.y, normal.z);
+        
+        // UV coordinates
+        const u = segment / segments;
+        const v = ring / rings;
+        uvs.push(u, v);
+      }
+    }
 
-        if (i < nu - 1 && j < nv - 1) {
-          const a = i * nv + j;
-          const b = i * nv + j + 1;
-          const c = (i + 1) * nv + j;
-          const d = (i + 1) * nv + j + 1;
-
-          indices.push(a, b, d);
-          indices.push(a, d, c);
-        }
+    // Create indices
+    for (let ring = 0; ring < rings; ring++) {
+      for (let segment = 0; segment < segments; segment++) {
+        const first = (ring * (segments + 1)) + segment;
+        const second = first + segments + 1;
+        
+        indices.push(first, second, first + 1);
+        indices.push(second, second + 1, first + 1);
       }
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
+    
     return geometry;
+  }
+
+  // Implement 2D methods
+  calculateCartesian2D(x: number, params: FormulaParams): number {
+    // For Gielis formula in 2D, we implement a polar to Cartesian transform
+    // First calculate the radius at various angles
+    const steps = 1000;
+    const maxAngle = Math.PI * 2;
+    
+    // Find the smallest distance from the point to the curve
+    let minDistance = Infinity;
+    let yValue = 0;
+    
+    for (let i = 0; i < steps; i++) {
+      const angle = (i / steps) * maxAngle;
+      params.phi = angle;
+      const r = this.calculate(params);
+      
+      const curveX = r * Math.cos(angle);
+      const curveY = r * Math.sin(angle);
+      
+      const distance = Math.sqrt((x - curveX) ** 2);
+      if (distance < minDistance) {
+        minDistance = distance;
+        yValue = curveY;
+      }
+    }
+    
+    return yValue;
+  }
+
+  createPlotData(params: FormulaParams, resolution: number = 100): { x: number[], y: number[] } {
+    const x: number[] = [];
+    const y: number[] = [];
+    
+    // For the Gielis formula, we can directly plot in polar coordinates
+    const maxAngle = Math.PI * 2;
+    
+    for (let i = 0; i <= resolution; i++) {
+      const angle = (i / resolution) * maxAngle;
+      params.phi = angle;
+      const r = this.calculate(params);
+      
+      // Convert to Cartesian
+      x.push(r * Math.cos(angle));
+      y.push(r * Math.sin(angle));
+    }
+    
+    return { x, y };
   }
 }
