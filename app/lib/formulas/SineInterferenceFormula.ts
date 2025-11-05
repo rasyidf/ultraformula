@@ -7,6 +7,8 @@ export class SineInterferenceFormula extends BaseFormula {
     name: "Sine Interference",
     description: "Creates interference patterns using sine waves",
     supportedDimensions: ['2d', '3d'],
+    categories: ["Wave", "Interference", "2D", "3D"],
+    tags: ["sine", "interference", "wave", "pattern", "math"],
     parameters: {
       frequency1: {
         name: "Frequency 1",

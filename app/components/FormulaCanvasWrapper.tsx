@@ -50,6 +50,7 @@ export function FormulaCanvasWrapper() {
       enableFloat={formulaState.enableFloat}
       outlineColor={formulaState.outlineColor}
       showOutlines={formulaState.showOutlines}
+      enableVertexColors={canvasSettings.enableVertexColors}
     />
   );
 }

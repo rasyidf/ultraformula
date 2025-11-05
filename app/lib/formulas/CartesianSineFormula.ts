@@ -7,6 +7,8 @@ export class CartesianSineFormula extends BaseFormula {
     name: "Cartesian Sine",
     description: "A formula optimized for 2D Cartesian plotting with sine waves",
     supportedDimensions: ['2d', '3d'],
+    categories: ["Wave", "Sine", "2D", "3D"],
+    tags: ["cartesian", "sine", "wave", "plot", "math"],
     parameters: {
       amplitude: {
         name: "Amplitude",

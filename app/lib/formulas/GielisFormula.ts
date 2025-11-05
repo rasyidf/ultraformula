@@ -7,6 +7,10 @@ export class GielisFormula extends BaseFormula {
     name: "Gielis Formula",
     description: "Generates shapes based on superformula discovered by Johan Gielis",
     supportedDimensions: ['2d', '3d'],
+    categories: ["Superformula", "Parametric", "2D", "3D"],
+    tags: ["gielis", "superformula", "parametric", "shape", "geometry"],
+    supportsVertexColors: true,
+    colorScheme: 'parametric',
     parameters: {
       a: {
         name: "A",
@@ -76,6 +80,7 @@ export class GielisFormula extends BaseFormula {
     const indices: number[] = [];
     const normals: number[] = [];
     const uvs: number[] = [];
+    const colors: number[] = [];
 
     for (let ring = 0; ring <= rings; ring++) {
       const theta = (ring / rings) * maxTheta;
@@ -104,6 +109,11 @@ export class GielisFormula extends BaseFormula {
         const u = segment / segments;
         const v = ring / rings;
         uvs.push(u, v);
+        
+        // Color based on parameters (color-coded parts)
+        const position = new THREE.Vector3(x, y, z);
+        const color = this.calculateColor(position, params, { u, v });
+        colors.push(color.r, color.g, color.b);
       }
     }
 
@@ -122,9 +132,25 @@ export class GielisFormula extends BaseFormula {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.setIndex(indices);
     
     return geometry;
+  }
+
+  calculateColor(position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }): THREE.Color {
+    // Color based on angular position (creates rainbow gradient around shape)
+    if (uv) {
+      const hue = uv.u; // Horizontal angle creates color gradient
+      const saturation = 0.7 + Math.sin(uv.v * Math.PI) * 0.2;
+      const lightness = 0.5 + Math.cos(uv.v * Math.PI * 2) * 0.2;
+      return new THREE.Color().setHSL(hue, saturation, lightness);
+    }
+    
+    // Fallback: color based on position
+    const angle = Math.atan2(position.z, position.x);
+    const hue = (angle + Math.PI) / (Math.PI * 2);
+    return new THREE.Color().setHSL(hue, 0.7, 0.5);
   }
 
   // Implement 2D methods

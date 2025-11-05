@@ -11,9 +11,9 @@ interface FormulaCreatorDialogProps {
 export function FormulaCreatorDialog({ isOpen, onClose }: FormulaCreatorDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent >
         <DialogHeader>
-          <DialogTitle>Create New Formula</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-primary">Create New Formula</DialogTitle>
         </DialogHeader>
         <FormulaCreator onComplete={onClose} />
       </DialogContent>

@@ -44,6 +44,7 @@ export class DynamicFormula extends BaseFormula {
     const indices: number[] = [];
     const normals: number[] = [];
     const uvs: number[] = [];
+    const colors: number[] = [];
 
     for (let ring = 0; ring <= rings; ring++) {
       const theta = (ring / rings) * maxTheta;
@@ -72,6 +73,11 @@ export class DynamicFormula extends BaseFormula {
         const u = segment / segments;
         const v = ring / rings;
         uvs.push(u, v);
+        
+        // Add colors if formula supports it
+        const position = new THREE.Vector3(x, y, z);
+        const color = this.calculateColor(position, params, { u, v });
+        colors.push(color.r, color.g, color.b);
       }
     }
 
@@ -90,6 +96,7 @@ export class DynamicFormula extends BaseFormula {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.setIndex(indices);
     
     return geometry;

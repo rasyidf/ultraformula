@@ -6,6 +6,10 @@ import { MobiusFormula } from "./MobiusFormula";
 import { SineInterferenceFormula } from "./SineInterferenceFormula";
 import { TerrainFormula } from "./TerrainFormula";
 import { CartesianSineFormula } from "./CartesianSineFormula";
+import { TorusFormula } from "./TorusFormula";
+import { KleinBottleFormula } from "./KleinBottleFormula";
+import { RoseCurveFormula } from "./RoseCurveFormula";
+import { LissajousFormula } from "./LissajousFormula";
 
 export const formulaRegistry: Record<string, Formula> = {
   gielis: new GielisFormula(),
@@ -15,6 +19,10 @@ export const formulaRegistry: Record<string, Formula> = {
   cellularNoise: new CellularNoiseFormula(),
   mobius: new MobiusFormula(),
   cartesianSine: new CartesianSineFormula(),
+  torus: new TorusFormula(),
+  kleinBottle: new KleinBottleFormula(),
+  roseCurve: new RoseCurveFormula(),
+  lissajous: new LissajousFormula(),
 };
 
 export const getFormula = (type: string): Formula => {

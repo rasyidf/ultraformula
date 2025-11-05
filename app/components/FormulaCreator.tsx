@@ -26,28 +26,44 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
   const [formulaString, setFormulaString] = useState<string>('');
   const [formula2DString, setFormula2DString] = useState<string>('');
   const [parameters, setParameters] = useState<Record<string, ParameterMetadata>>({});
+  const [constants, setConstants] = useState<Record<string, number>>({});
   const [status, setStatus] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [supportedDimensions, setSupportedDimensions] = useState<('2d' | '3d')[]>(['3d']);
 
   const handleFormulaBlur = () => {
     if (formulaString) {
+      // Detect custom constants (e.g., K=1.414)
+      const assignMatch = formulaString.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\d\.eE+-]+)\s*;?/);
+      if (assignMatch) {
+        const [, key, val] = assignMatch;
+        setConstants(prev => ({ ...prev, [key]: Number(val) }));
+      }
       const detectedParams = FormulaParser.detectParameters(formulaString);
-      setParameters(prevParams => ({
-        ...prevParams,
-        ...detectedParams
-      }));
+      const paramObj = { ...parameters };
+      detectedParams.forEach(p => { paramObj[p.name] = p; });
+      setParameters(paramObj);
+      // Validate formula and show error if invalid
+      if (!FormulaParser.validateFormula(formulaString)) {
+        setError('Invalid formula syntax or unsupported function.');
+      } else {
+        setError('');
+      }
     }
   };
 
   const handleFormula2DBlur = () => {
     if (formula2DString) {
-      // Also detect parameters from the 2D formula
       const detectedParams = FormulaParser.detectParameters(formula2DString);
-      setParameters(prevParams => ({
-        ...prevParams,
-        ...detectedParams
-      }));
+      const paramObj = { ...parameters };
+      detectedParams.forEach(p => { paramObj[p.name] = p; });
+      setParameters(paramObj);
+      if (!FormulaParser.validateFormula(formula2DString)) {
+        setError('Invalid 2D formula syntax or unsupported function.');
+      } else {
+        setError('');
+      }
     }
   };
 
@@ -69,21 +85,25 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
   };
 
   const createFormula = async () => {
+    setError('');
     if (!name || !formulaString) {
       setStatus('Please fill in all required fields');
       return;
     }
-
     if (supportedDimensions.length === 0) {
       setStatus('Please select at least one supported dimension');
       return;
     }
-
-    // If 2D is selected but no 2D formula is provided, we'll use a default implementation
-    if (supportedDimensions.includes('2d') && !formula2DString) {
-      console.log("Using default 2D formula implementation");
+    if (!FormulaParser.validateFormula(formulaString)) {
+      setError('Formula syntax error or unsupported function.');
+      setStatus('');
+      return;
     }
-
+    if (supportedDimensions.includes('2d') && formula2DString && !FormulaParser.validateFormula(formula2DString)) {
+      setError('2D formula syntax error or unsupported function.');
+      setStatus('');
+      return;
+    }
     setLoading(true);
     try {
       const newFormula = new DynamicFormula(
@@ -96,9 +116,9 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
         formulaString,
         formula2DString || undefined
       );
-
       if (newFormula.validate()) {
         setStatus('Formula created successfully!');
+        setError('');
         onComplete?.(newFormula);
       } else {
         setStatus('Invalid formula!');
@@ -106,6 +126,7 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
     } catch (error) {
       if (error instanceof Error) {
         setStatus(`Error: ${error.message}`);
+        setError(error.message);
       }
     } finally {
       setLoading(false);
@@ -113,8 +134,8 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
   };
 
   return (
-    <div>
-      <div className="space-y-4">
+    <div className="p-2 md:p-4 rounded-lg bg-background   max-w-xl w-full">
+      <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="name">Formula Name</Label>
           <Input
@@ -125,7 +146,6 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
             required
           />
         </div>
-
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
           <Textarea
@@ -136,7 +156,6 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
             rows={2}
           />
         </div>
-
         <div className="space-y-2">
           <Label>Supported Dimensions</Label>
           <div className="flex gap-4 mt-1">
@@ -158,8 +177,7 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
             </div>
           </div>
         </div>
-
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible defaultValue='formula' className="w-full">
           <AccordionItem value="formula">
             <AccordionTrigger>Formula Definition</AccordionTrigger>
             <AccordionContent>
@@ -171,16 +189,31 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
                   onChange={(e) => setFormulaString(e.target.value)}
                   onBlur={handleFormulaBlur}
                   onKeyDown={handleFormulaKeyDown}
-                  placeholder="Enter your formula using JavaScript syntax, e.g. Math.sin(params.phi) * params.amplitude"
+                  placeholder="e.g. K=1.414;=K*x+PI or =Math.sin(params.phi)*params.amplitude"
                   rows={5}
                   required
                 />
                 <p className="text-xs text-gray-500">
-                  Use JavaScript syntax. Parameters are accessed via params.paramName.
+                  Supports custom constants (e.g. <b>K=1.414;</b>), built-in constants (PI, E, TAU, PHI), and scientific notation.<br />
+                  Use JavaScript syntax. Parameters are auto-detected.<br />
                   Hit Enter or Tab to detect parameters.
                 </p>
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {Object.keys(constants).length > 0 && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <b>Detected Constants:</b> {Object.entries(constants).map(([k, v]) => `${k}=${v}`).join(', ')}
+                  </div>
+                )}
+                {Object.keys(parameters).length > 0 && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <b>Detected Parameters:</b> {Object.keys(parameters).join(', ')}
+                  </div>
+                )}
               </div>
-
               {supportedDimensions.includes('2d') && (
                 <div className="mt-4 space-y-2">
                   <Label htmlFor="formula2d">2D Cartesian Formula (optional)</Label>
@@ -189,18 +222,17 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
                     value={formula2DString}
                     onChange={(e) => setFormula2DString(e.target.value)}
                     onBlur={handleFormula2DBlur}
-                    placeholder="Enter 2D formula variant: e.g., params.a * Math.sin(x * params.frequency)"
+                    placeholder="e.g. params.a * Math.sin(x * params.frequency)"
                     rows={3}
                   />
                   <p className="text-xs text-gray-500">
-                    For 2D plotting, specify how y is calculated for a given x value.
-                    If not provided, we'll generate one from the main formula.
+                    For 2D plotting, specify how y is calculated for a given x value.<br />
+                    If not provided, a default will be generated from the main formula.
                   </p>
                 </div>
               )}
             </AccordionContent>
           </AccordionItem>
-
           <AccordionItem value="parameters">
             <AccordionTrigger>Parameters</AccordionTrigger>
             <AccordionContent>
@@ -211,7 +243,6 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-
         <Button
           onClick={createFormula}
           disabled={loading}
@@ -219,7 +250,6 @@ export const FormulaCreator: React.FC<FormulaCreatorProps> = ({ onComplete }) =>
         >
           {loading ? 'Creating...' : 'Create Formula'}
         </Button>
-
         {status && (
           <Alert variant={status.startsWith('Error') ? 'destructive' : 'default'}>
             <AlertDescription>{status}</AlertDescription>

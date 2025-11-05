@@ -11,6 +11,7 @@ export interface CanvasSettings {
   showEnvironment: boolean;
   environmentPreset: string;
   showStats: boolean;
+  enableVertexColors: boolean; // Enable color-coded parts
 }
 
 export function useCanvasSettings() {
@@ -24,7 +25,8 @@ export function useCanvasSettings() {
     showShadows: true,
     showEnvironment: false,
     environmentPreset: "warehouse",
-    showStats: false
+    showStats: false,
+    enableVertexColors: true // Default to true to show color-coded parts
   });
 
   const updateSettings = (updatedSettings: Partial<CanvasSettings>) => {
@@ -71,6 +73,10 @@ export function useCanvasSettings() {
     setSettings(prev => ({ ...prev, showStats: value }));
   };
 
+  const setEnableVertexColors = (value: boolean) => {
+    setSettings(prev => ({ ...prev, enableVertexColors: value }));
+  };
+
   return {
     settings,
     updateSettings,
@@ -83,6 +89,7 @@ export function useCanvasSettings() {
     setShowShadows,
     setEnvironmentPreset,
     setShowEnvironment,
-    setShowStats
+    setShowStats,
+    setEnableVertexColors
   };
 }

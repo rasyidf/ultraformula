@@ -8,6 +8,8 @@ export class TerrainFormula extends BaseFormula {
     name: "Perlin Noise Terrain",
     description: "Generate terrain using perlin noise",
     supportedDimensions: ['3d'],
+    categories: ["Noise", "Terrain", "3D"],
+    tags: ["perlin", "terrain", "noise", "procedural", "landscape"],
     parameters: {
       scale: {
         name: "scale",

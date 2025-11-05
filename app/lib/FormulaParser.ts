@@ -8,10 +8,20 @@ type Token = {
 export class FormulaParser {
   private static readonly ALLOWED_FUNCTIONS = new Set([
     'sin', 'cos', 'tan', 'abs', 'sqrt', 'pow', 'exp', 'log',
-    'floor', 'ceil', 'round', 'min', 'max'
+    'floor', 'ceil', 'round', 'min', 'max',
+    'atan', 'atan2', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'acosh', 'asinh', 'atanh', 'sign', 'trunc', 'clamp'
   ]);
 
+  // Built-in constants
+  private static readonly BUILTIN_CONSTANTS: Record<string, number> = {
+    PI: Math.PI,
+    E: Math.E,
+    TAU: Math.PI * 2,
+    PHI: (1 + Math.sqrt(5)) / 2,
+  };
+
   private static readonly OPERATORS = new Set(['+', '-', '*', '/', '^', '(', ')']);
+  private static readonly SCIENTIFIC_NOTATION_REGEX = /^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
 
   static detectParameters(formula: string): ParameterMetadata[] {
     const tokens = this.tokenize(formula.slice(1));
@@ -41,6 +51,30 @@ export class FormulaParser {
         continue;
       }
 
+      // Handle scientific notation (e.g., 1.23e-4)
+      if ((char === 'e' || char === 'E') && current && /\d$/.test(current)) {
+        current += char;
+        i++;
+        // Accept optional sign after 'e'
+        if (i < formula.length && (formula[i] === '-' || formula[i] === '+')) {
+          current += formula[i];
+          i++;
+        }
+        // Accept digits after 'e' or 'E'
+        while (i < formula.length && /\d/.test(formula[i])) {
+          current += formula[i];
+          i++;
+        }
+        continue;
+      }
+
+      // Handle negative numbers at start or after operator/parenthesis
+      if ((char === '-' || char === '+') && (i === 0 || this.OPERATORS.has(formula[i - 1]) || formula[i - 1] === '(')) {
+        current += char;
+        i++;
+        continue;
+      }
+
       if (this.OPERATORS.has(char)) {
         if (current) {
           tokens.push(this.categorizeToken(current));
@@ -49,6 +83,19 @@ export class FormulaParser {
         tokens.push({ type: char === '(' || char === ')' ? 'parenthesis' : 'operator', value: char });
         i++;
         continue;
+      }
+
+      // Handle built-in constants (PI, E, TAU, PHI)
+      for (const k of Object.keys(this.BUILTIN_CONSTANTS)) {
+        if (formula.slice(i, i + k.length).toUpperCase() === k) {
+          if (current) {
+            tokens.push(this.categorizeToken(current));
+            current = '';
+          }
+          tokens.push({ type: 'number', value: String(this.BUILTIN_CONSTANTS[k]) });
+          i += k.length;
+          continue;
+        }
       }
 
       current += char;
@@ -98,7 +145,7 @@ export class FormulaParser {
     if (!formula.startsWith('=')) {
       return [];
     }
-    
+
     const tokens = this.tokenize(formula.slice(1));
     return tokens
       .filter(token => token.type === 'variable')
@@ -111,14 +158,28 @@ export class FormulaParser {
       throw new Error('Formula must start with =');
     }
 
-    const expression = formula.slice(1);
-    const safeFunction = new Function(...Object.keys(variables), `
+    // Support custom constants (e.g., "K=1.414")
+    // Parse custom constants from the formula string before '='
+    let customConstants: Record<string, number> = {};
+    let expr = formula;
+    const assignMatch = expr.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\d\.eE+-]+)\s*;?/);
+    if (assignMatch) {
+      const [, key, val] = assignMatch;
+      customConstants[key] = Number(val);
+      expr = expr.slice(assignMatch[0].length);
+      if (!expr.startsWith('=')) throw new Error('Formula must start with = after custom constant assignment');
+    }
+
+    const expression = expr.slice(1);
+    // Merge built-in and custom constants into variables
+    const allVars = { ...this.BUILTIN_CONSTANTS, ...customConstants, ...variables };
+    const safeFunction = new Function(...Object.keys(allVars), `
       const Math = globalThis.Math;
       return ${expression};
     `);
 
     try {
-      return safeFunction(...Object.values(variables));
+      return safeFunction(...Object.values(allVars));
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Syntax error in formula');

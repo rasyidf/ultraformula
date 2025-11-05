@@ -35,6 +35,7 @@ interface FormulaContextType {
   setEnvironmentPreset: (preset: string) => void;
   setShowEnvironment: (value: boolean) => void;
   setShowStats: (value: boolean) => void;
+  setEnableVertexColors: (value: boolean) => void;
   
   // Camera settings
   cameraSettings: CameraSettings;
@@ -95,6 +96,7 @@ export function FormulaProvider({ children }: { children: ReactNode; }) {
       setEnvironmentPreset: canvasSettings.setEnvironmentPreset,
       setShowEnvironment: canvasSettings.setShowEnvironment,
       setShowStats: canvasSettings.setShowStats,
+      setEnableVertexColors: canvasSettings.setEnableVertexColors,
       
       // Camera settings
       cameraSettings: camera.settings,

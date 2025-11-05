@@ -8,6 +8,8 @@ export class GyroidFormula extends BaseFormula {
     name: "Gyroid",
     description: "Triply periodic minimal surface",
     supportedDimensions: ['3d'],
+    categories: ["Surface", "Minimal Surface", "3D"],
+    tags: ["gyroid", "periodic", "math", "geometry"],
     parameters: {
       scale: {
         name: "Scale",

@@ -33,4 +33,20 @@ export abstract class BaseFormula implements Formula {
     
     return { x, y };
   }
+
+  // Default color calculation method
+  calculateColor(position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }): THREE.Color {
+    // Default: rainbow gradient based on horizontal angle
+    if (uv) {
+      const hue = uv.u;
+      const saturation = 0.7;
+      const lightness = 0.5 + Math.sin(uv.v * Math.PI) * 0.2;
+      return new THREE.Color().setHSL(hue, saturation, lightness);
+    }
+    
+    // Fallback: color based on position angle
+    const angle = Math.atan2(position.z, position.x);
+    const hue = (angle + Math.PI) / (Math.PI * 2);
+    return new THREE.Color().setHSL(hue, 0.7, 0.5);
+  }
 }

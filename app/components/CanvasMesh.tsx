@@ -15,6 +15,7 @@ interface SuperformulaMeshProps {
   enableFloat?: boolean;
   outlineColor?: string;
   showOutlines?: boolean;
+  enableVertexColors?: boolean; // Enable color-coded parts
 }
 
 export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
@@ -27,7 +28,8 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
   wireframe = true,
   enableFloat = false,
   outlineColor = "#ffffff",
-  showOutlines = false
+  showOutlines = false,
+  enableVertexColors = true // Default to true to show color-coded parts
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -45,11 +47,15 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
     const mesh = (
       <mesh ref={meshRef} geometry={geometry} scale={scale}>
         {materialType === "standard" && (
-          <meshStandardMaterial color={color} wireframe={wireframe} />
+          <meshStandardMaterial 
+            color={enableVertexColors ? "#ffffff" : color} 
+            wireframe={wireframe}
+            vertexColors={enableVertexColors && formula.metadata.supportsVertexColors}
+          />
         )}
         {materialType === "wobble" && (
           <MeshWobbleMaterial 
-            color={color} 
+            color={enableVertexColors ? "#ffffff" : color}
             factor={0.6} 
             speed={1} 
             wireframe={wireframe}
@@ -57,7 +63,7 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
         )}
         {materialType === "transmission" && (
           <MeshTransmissionMaterial
-            color={color}
+            color={enableVertexColors ? "#ffffff" : color}
             resolution={256}
             thickness={0.5}
             roughness={0.15}
@@ -73,7 +79,7 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
         )}
         {materialType === "reflector" && (
           <MeshReflectorMaterial
-            color={color}
+            color={enableVertexColors ? "#ffffff" : color}
             roughness={0.5}
             metalness={0.8}
             blur={[300, 100]}

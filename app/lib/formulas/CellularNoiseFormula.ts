@@ -9,6 +9,8 @@ export class CellularNoiseFormula extends BaseFormula {
     name: "Cellular Pattern",
     description: "Worley noise cellular structure",
     supportedDimensions: ['3d'],
+    categories: ["Noise", "Cellular", "3D"],
+    tags: ["worley", "cellular", "noise", "pattern", "procedural"],
     parameters: {
       scale: {
         name: "Scale",

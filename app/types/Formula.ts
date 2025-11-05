@@ -18,6 +18,10 @@ export interface FormulaMetadata {
   description: string;
   parameters: Record<string, ParameterMetadata>;
   supportedDimensions: ('2d' | '3d')[];
+  categories?: string[];
+  tags?: string[];
+  supportsVertexColors?: boolean; // Whether this formula supports color-coded parts
+  colorScheme?: 'gradient' | 'categorical' | 'radial' | 'parametric'; // Default color scheme
 }
 
 export interface FormulaParams {
@@ -35,6 +39,8 @@ export interface Formula {
   calculate2D?: (x: number, y: number, params: FormulaParams) => number;
   calculateCartesian2D?: (x: number, params: FormulaParams) => number;
   createPlotData?: (params: FormulaParams, resolution: number) => { x: number[]; y: number[] };
+  // Color function for color-coded parts
+  calculateColor?: (position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }) => THREE.Color;
 }
 
 export interface Point2D {

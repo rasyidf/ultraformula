@@ -30,6 +30,7 @@ interface FormulaCanvasProps {
   enableFloat: boolean;
   outlineColor: string;
   showOutlines: boolean;
+  enableVertexColors?: boolean; // Enable color-coded parts
 }
 
 export function FormulaCanvas({
@@ -53,7 +54,8 @@ export function FormulaCanvas({
   wireframe,
   enableFloat,
   outlineColor,
-  showOutlines
+  showOutlines,
+  enableVertexColors = true // Default to true
 }: FormulaCanvasProps) {
   return (
     <Card className="w-full h-[500px] lg:h-[calc(100vh-12rem)]" style={{ backgroundColor }}>
@@ -74,6 +76,7 @@ export function FormulaCanvas({
               enableFloat={enableFloat}
               outlineColor={outlineColor}
               showOutlines={showOutlines}
+              enableVertexColors={enableVertexColors}
             />
             {showAxes && <axesHelper args={[5]} />}
             

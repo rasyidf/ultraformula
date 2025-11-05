@@ -7,6 +7,10 @@ export class MobiusFormula extends BaseFormula {
     name: "Mobius Strip",
     description: "Creates a Mobius strip with parametric adjustments",
     supportedDimensions: ['2d', '3d'],
+    categories: ["Surface", "Parametric", "2D", "3D"],
+    tags: ["mobius", "strip", "parametric", "geometry", "topology"],
+    supportsVertexColors: true,
+    colorScheme: 'gradient',
     parameters: {
       radius: {
         name: "Radius",
@@ -30,7 +34,7 @@ export class MobiusFormula extends BaseFormula {
         min: 1,
         max: 10,
         step: 1,
-        default: 1
+        default: 7
       }
     }
   };
@@ -51,6 +55,7 @@ export class MobiusFormula extends BaseFormula {
     const indices: number[] = [];
     const normals: number[] = [];
     const uvs: number[] = [];
+    const colors: number[] = [];
     
     // Create vertices
     for (let i = 0; i <= segments; i++) {
@@ -77,6 +82,11 @@ export class MobiusFormula extends BaseFormula {
         
         // UV coordinates
         uvs.push(u, v);
+        
+        // Color based on position along the strip (shows the twist)
+        const position = new THREE.Vector3(x, z, y);
+        const color = this.calculateColor(position, params, { u, v });
+        colors.push(color.r, color.g, color.b);
       }
     }
     
@@ -97,9 +107,23 @@ export class MobiusFormula extends BaseFormula {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.setIndex(indices);
     
     return geometry;
+  }
+
+  calculateColor(position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }): THREE.Color {
+    // Color the Mobius strip with a gradient that shows the twist
+    if (uv) {
+      // Create a gradient based on position along strip (u) and across width (v)
+      const hue = uv.u; // Rainbow gradient along the strip
+      const saturation = 0.8;
+      const lightness = 0.4 + uv.v * 0.4; // Lighter on one edge, darker on the other
+      return new THREE.Color().setHSL(hue, saturation, lightness);
+    }
+    
+    return new THREE.Color(0xffffff);
   }
 
   // 2D methods for Mobius strip visualization
