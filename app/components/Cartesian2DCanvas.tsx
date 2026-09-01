@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Card, CardContent } from '~/components/ui/card';
+import { isDarkColor } from '~/lib/viewportColors';
 import type { Formula, FormulaParams } from '~/types/Formula';
 
 interface Cartesian2DCanvasProps {
@@ -65,13 +66,17 @@ export function Cartesian2DCanvas({
     const centerX = width / 2;
     const centerY = height / 2;
 
+    const dark = isDarkColor(backgroundColor);
+    const gridColor = dark ? '#2b3245' : '#dddddd';
+    const axisColor = dark ? '#8b93a7' : '#000000';
+
     // Grid and axes
     if (showGrid) {
-      drawGrid(ctx, width, height, centerX, centerY);
+      drawGrid(ctx, width, height, centerX, centerY, gridColor);
     }
 
     if (showAxes) {
-      drawAxes(ctx, width, height, centerX, centerY);
+      drawAxes(ctx, width, height, centerX, centerY, axisColor);
     }
 
     // Get plot data
@@ -107,9 +112,10 @@ export function Cartesian2DCanvas({
     width: number,
     height: number,
     centerX: number,
-    centerY: number
+    centerY: number,
+    color: string
   ) => {
-    ctx.strokeStyle = '#dddddd';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 0.5;
 
     // Grid spacing in pixels
@@ -137,9 +143,10 @@ export function Cartesian2DCanvas({
     width: number,
     height: number,
     centerX: number,
-    centerY: number
+    centerY: number,
+    color: string
   ) => {
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 1;
 
     // X axis
@@ -174,7 +181,7 @@ export function Cartesian2DCanvas({
       ctx.stroke();
       
       // Draw label
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = color;
       ctx.fillText(i.toString(), x, centerY + 15);
     }
     
@@ -192,7 +199,7 @@ export function Cartesian2DCanvas({
       ctx.stroke();
       
       // Draw label
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = color;
       ctx.fillText(i.toString(), centerX - 10, y + 4);
     }
     

@@ -1,16 +1,18 @@
+import { useViewportColors } from "~/hooks/useViewportColors";
 import { useSceneStore } from "~/stores/sceneStore";
 import type { RenderViewProps } from "~/types/RenderView";
 import { FormulaCanvas } from "../FormulaCanvas";
 
 export function Mesh3DView({ formula, params }: RenderViewProps) {
   const s = useSceneStore();
+  const colors = useViewportColors();
 
   return (
     <FormulaCanvas
       formula={formula}
       params={params}
-      backgroundColor={s.backgroundColor}
-      meshColor={s.meshColor}
+      backgroundColor={colors.background}
+      meshColor={colors.mesh}
       showGrid={s.showGrid}
       showAxes={s.showAxes}
       scale={s.scale}
@@ -26,7 +28,7 @@ export function Mesh3DView({ formula, params }: RenderViewProps) {
       materialType={s.materialType}
       wireframe={s.wireframe}
       enableFloat={s.enableFloat}
-      outlineColor={s.outlineColor}
+      outlineColor={colors.outline}
       showOutlines={s.showOutlines}
       enableVertexColors={s.enableVertexColors}
     />

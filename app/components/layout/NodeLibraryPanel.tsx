@@ -55,7 +55,7 @@ export function NodeLibraryPanel() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 max-h-[calc(100vh-8rem)]">
         <div className="p-2">
           {grouped.map(({ category, items }) => (
             <div key={category} className="mb-3">

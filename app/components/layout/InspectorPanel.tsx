@@ -7,8 +7,6 @@ import {
   AccordionTrigger,
 } from "~/components/ui/accordion";
 import { Button } from "~/components/ui/button";
-import { ColorPicker } from "~/components/ui/color-picker";
-import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import {
@@ -208,62 +206,41 @@ function SceneControls({
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="material">
-            <AccordionTrigger className="text-xs">Material &amp; colour</AccordionTrigger>
-            <AccordionContent className="space-y-3">
-              {is3D && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Material</Label>
-                    <Select
-                      value={s.materialType}
-                      onValueChange={(v) => s.set({ materialType: v as typeof s.materialType })}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="wobble">Wobble</SelectItem>
-                        <SelectItem value="transmission">Transmission</SelectItem>
-                        <SelectItem value="reflector">Reflector</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <ToggleRow label="Wireframe" checked={s.wireframe} onChange={(v) => s.set({ wireframe: v })} />
-                  <ToggleRow label="Float effect" checked={s.enableFloat} onChange={(v) => s.set({ enableFloat: v })} />
-                  <ToggleRow label="Outlines" checked={s.showOutlines} onChange={(v) => s.set({ showOutlines: v })} />
-                  <ToggleRow
-                    label="Vertex colours"
-                    checked={s.enableVertexColors}
-                    onChange={(v) => s.set({ enableVertexColors: v })}
-                  />
-                </>
-              )}
-              <div className="space-y-1.5">
-                <Label className="text-xs">{is3D ? "Mesh colour" : "Line colour"}</Label>
-                <div className="flex items-center gap-1">
-                  <ColorPicker color={s.meshColor} onChange={(c) => s.set({ meshColor: c })} />
-                  <Input
-                    value={s.meshColor}
-                    onChange={(e) => s.set({ meshColor: e.target.value })}
-                    className="h-8 flex-1 text-xs"
-                  />
+          {is3D && (
+            <AccordionItem value="material">
+              <AccordionTrigger className="text-xs">Material</AccordionTrigger>
+              <AccordionContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Material</Label>
+                  <Select
+                    value={s.materialType}
+                    onValueChange={(v) => s.set({ materialType: v as typeof s.materialType })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="wobble">Wobble</SelectItem>
+                      <SelectItem value="transmission">Transmission</SelectItem>
+                      <SelectItem value="reflector">Reflector</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Background</Label>
-                <div className="flex items-center gap-1">
-                  <ColorPicker color={s.backgroundColor} onChange={(c) => s.set({ backgroundColor: c })} />
-                  <Input
-                    value={s.backgroundColor}
-                    onChange={(e) => s.set({ backgroundColor: e.target.value })}
-                    className="h-8 flex-1 text-xs"
-                  />
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                <ToggleRow label="Wireframe" checked={s.wireframe} onChange={(v) => s.set({ wireframe: v })} />
+                <ToggleRow label="Float effect" checked={s.enableFloat} onChange={(v) => s.set({ enableFloat: v })} />
+                <ToggleRow label="Outlines" checked={s.showOutlines} onChange={(v) => s.set({ showOutlines: v })} />
+                <ToggleRow
+                  label="Vertex colours"
+                  checked={s.enableVertexColors}
+                  onChange={(v) => s.set({ enableVertexColors: v })}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Theme &amp; viewport colours live in Settings (top-right).
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          )}
         </Accordion>
       </div>
     </ScrollArea>

@@ -25,6 +25,9 @@ export interface SceneState {
   ambientLightIntensity: number;
   pointLightIntensity: number;
   pointLightPosition: [number, number, number];
+  // colour scheme
+  /** background / mesh / outline follow the light|dark theme when true */
+  syncColorsWithTheme: boolean;
   // material / appearance
   meshColor: string;
   materialType: MaterialType;
@@ -55,7 +58,8 @@ const defaults = {
   ambientLightIntensity: 0.6,
   pointLightIntensity: 1,
   pointLightPosition: [10, 20, 10] as [number, number, number],
-  meshColor: "#5b8def",
+  syncColorsWithTheme: true,
+  meshColor: "#e5e7eb",
   materialType: "standard" as MaterialType,
   wireframe: false,
   enableFloat: false,

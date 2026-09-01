@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useRef } from "react";
 import { toast } from "sonner";
-import { ThemeToggle } from "~/components/theme/ThemeToggle";
+import { SettingsDialog } from "~/components/settings/SettingsDialog";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -124,7 +124,7 @@ export function TopBar() {
         <Button variant="ghost" size="sm" onClick={reset}>
           <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
         </Button>
-        <ThemeToggle />
+        <SettingsDialog />
       </div>
     </header>
   );

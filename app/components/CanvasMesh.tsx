@@ -43,27 +43,32 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
     }
   });
 
+  // Only honour vertex colours when the geometry actually carries a colour
+  // attribute; otherwise fall back to the (theme-driven) mesh colour.
+  const useVertexColors = enableVertexColors && !!formula.metadata.supportsVertexColors;
+  const materialColor = useVertexColors ? "#ffffff" : color;
+
   const renderMesh = () => {
     const mesh = (
       <mesh ref={meshRef} geometry={geometry} scale={scale}>
         {materialType === "standard" && (
-          <meshStandardMaterial 
-            color={enableVertexColors ? "#ffffff" : color} 
+          <meshStandardMaterial
+            color={materialColor}
             wireframe={wireframe}
-            vertexColors={enableVertexColors && formula.metadata.supportsVertexColors}
+            vertexColors={useVertexColors}
           />
         )}
         {materialType === "wobble" && (
-          <MeshWobbleMaterial 
-            color={enableVertexColors ? "#ffffff" : color}
-            factor={0.6} 
-            speed={1} 
+          <MeshWobbleMaterial
+            color={materialColor}
+            factor={0.6}
+            speed={1}
             wireframe={wireframe}
           />
         )}
         {materialType === "transmission" && (
           <MeshTransmissionMaterial
-            color={enableVertexColors ? "#ffffff" : color}
+            color={materialColor}
             resolution={256}
             thickness={0.5}
             roughness={0.15}
@@ -79,7 +84,7 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
         )}
         {materialType === "reflector" && (
           <MeshReflectorMaterial
-            color={enableVertexColors ? "#ffffff" : color}
+            color={materialColor}
             roughness={0.5}
             metalness={0.8}
             blur={[300, 100]}
