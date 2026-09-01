@@ -4,7 +4,12 @@ import type { Formula, FormulaMetadata, FormulaParams } from "~/types/Formula";
 export abstract class BaseFormula implements Formula {
   abstract metadata: FormulaMetadata;
   abstract calculate(params: FormulaParams): number;
-  abstract createGeometry(params: FormulaParams): THREE.BufferGeometry;
+
+  // 3D formulas override this. Non-mesh formulas (e.g. tile-grid / WFC) inherit
+  // the empty default and are never offered the 3D mesh view.
+  createGeometry(params: FormulaParams): THREE.BufferGeometry {
+    return new THREE.BufferGeometry();
+  }
 
   // Default 2D methods that can be overridden by subclasses
   calculate2D(x: number, y: number, params: FormulaParams): number {

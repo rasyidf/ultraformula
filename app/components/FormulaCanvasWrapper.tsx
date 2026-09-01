@@ -1,56 +1,31 @@
+import { useEffect } from "react";
 import { useSuperformulaContext } from "~/contexts/FormulaContext";
 import { getFormula } from "~/lib/formulas";
-import { Cartesian2DCanvas } from "./Cartesian2DCanvas";
-import { FormulaCanvas } from "./FormulaCanvas";
+import { Card, CardContent } from "~/components/ui/card";
 
 export function FormulaCanvasWrapper() {
-  const { 
-    formulaState, 
-    canvasSettings, 
-    cameraSettings,
-  } = useSuperformulaContext();
+  const { formulaState, canvasSettings, activeView, setActiveViewId } = useSuperformulaContext();
 
   const formula = getFormula(formulaState.formulaType);
-  const is2DMode = canvasSettings.renderMode === '2d';
-  
-  if (is2DMode && formula.createPlotData) {
+
+  // Keep the stored id in sync when the resolver had to fall back (e.g. after
+  // switching to a formula that doesn't support the previously-active view).
+  useEffect(() => {
+    if (activeView && activeView.id !== canvasSettings.activeViewId) {
+      setActiveViewId(activeView.id);
+    }
+  }, [activeView, canvasSettings.activeViewId, setActiveViewId]);
+
+  if (!activeView) {
     return (
-      <Cartesian2DCanvas
-        formula={formula}
-        params={formulaState.params}
-        backgroundColor={canvasSettings.backgroundColor}
-        lineColor={formulaState.meshColor}
-        showGrid={canvasSettings.showGrid}
-        showAxes={canvasSettings.showAxes}
-        scale={canvasSettings.scale}
-      />
+      <Card className="w-full h-[500px] lg:h-[calc(100vh-12rem)]">
+        <CardContent className="flex h-full items-center justify-center p-0 text-sm text-muted-foreground">
+          This formula has no available render view.
+        </CardContent>
+      </Card>
     );
   }
 
-  return (
-    <FormulaCanvas
-      formula={formula}
-      params={formulaState.params}
-      backgroundColor={canvasSettings.backgroundColor}
-      meshColor={formulaState.meshColor}
-      showGrid={canvasSettings.showGrid}
-      showAxes={canvasSettings.showAxes}
-      scale={canvasSettings.scale}
-      autoRotate={canvasSettings.autoRotate}
-      showEnvironment={canvasSettings.showEnvironment}
-      environmentPreset={canvasSettings.environmentPreset}
-      showStats={canvasSettings.showStats}
-      showShadows={canvasSettings.showShadows}
-      cameraPosition={cameraSettings.cameraPosition}
-      ambientLightIntensity={cameraSettings.ambientLightIntensity}
-      pointLightIntensity={cameraSettings.pointLightIntensity}
-      pointLightPosition={cameraSettings.pointLightPosition}
-      materialType={formulaState.materialType}
-      wireframe={formulaState.wireframe}
-      enableFloat={formulaState.enableFloat}
-      outlineColor={formulaState.outlineColor}
-      showOutlines={formulaState.showOutlines}
-      enableVertexColors={canvasSettings.enableVertexColors}
-    />
-  );
+  const { Component } = activeView;
+  return <Component formula={formula} params={formulaState.params} />;
 }

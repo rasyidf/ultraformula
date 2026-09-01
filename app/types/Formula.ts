@@ -11,6 +11,8 @@ export interface ParameterMetadata {
   // Properties for advanced controls:
   controlType?: 'toggle' | 'input' | 'select' | 'slider';
   choices?: number[];
+  /** Display labels for `choices`, positionally matched. Falls back to the number. */
+  choiceLabels?: string[];
 }
 
 export interface FormulaMetadata {
@@ -18,10 +20,25 @@ export interface FormulaMetadata {
   description: string;
   parameters: Record<string, ParameterMetadata>;
   supportedDimensions: ('2d' | '3d')[];
+  /**
+   * Explicit list of render-view ids this formula can be shown with
+   * (e.g. ['mesh3d'], ['tileGrid2d']). When omitted it is inferred from
+   * `supportedDimensions`. See app/lib/renderViews.
+   */
+  renderViews?: string[];
   categories?: string[];
   tags?: string[];
   supportsVertexColors?: boolean; // Whether this formula supports color-coded parts
   colorScheme?: 'gradient' | 'categorical' | 'radial' | 'parametric'; // Default color scheme
+}
+
+/** A collapsed tile grid produced by constraint-based formulas (e.g. WFC). */
+export interface TileGridResult {
+  width: number;
+  height: number;
+  /** row-major, length width*height; value = palette index, <0 = unresolved/contradiction */
+  cells: Int16Array;
+  palette: { color: string; label: string }[];
 }
 
 export interface FormulaParams {
@@ -34,11 +51,13 @@ export interface Formula {
   metadata: FormulaMetadata;
   calculate: FormulaFunction;
   // 3D specific methods
-  createGeometry: (params: FormulaParams) => THREE.BufferGeometry;
+  createGeometry?: (params: FormulaParams) => THREE.BufferGeometry;
   // 2D specific methods
   calculate2D?: (x: number, y: number, params: FormulaParams) => number;
   calculateCartesian2D?: (x: number, params: FormulaParams) => number;
   createPlotData?: (params: FormulaParams, resolution: number) => { x: number[]; y: number[] };
+  // Tile-grid / constraint-based methods
+  createTileGrid?: (params: FormulaParams) => TileGridResult;
   // Color function for color-coded parts
   calculateColor?: (position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }) => THREE.Color;
 }

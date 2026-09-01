@@ -24,12 +24,16 @@ export const ParameterControl: React.FC<ParameterControlProps> = ({
   onChange,
   onToggleLock
 }) => {
+  // Guard against an undefined value (e.g. a param the current state hasn't
+  // been seeded with yet) so controls never crash on `.toString()` / `.toFixed()`.
+  const safeValue = value ?? metadata.default ?? metadata.min ?? 0;
+
   let controlElement;
   switch (metadata.controlType) {
     case "toggle":
       controlElement = (
         <div className="flex items-center space-x-2">
-          <Switch id={paramKey} checked={!!value} disabled={isLocked} onCheckedChange={(e) => onChange(e ? 1 : 0)} />
+          <Switch id={paramKey} checked={!!safeValue} disabled={isLocked} onCheckedChange={(e) => onChange(e ? 1 : 0)} />
           <Label htmlFor={paramKey}>{metadata.name}</Label>
         </div>
       );
@@ -38,7 +42,7 @@ export const ParameterControl: React.FC<ParameterControlProps> = ({
       controlElement = (
         <Input
           type="number"
-          value={value}
+          value={safeValue}
           min={metadata.min}
           max={metadata.max}
           step={metadata.step}
@@ -51,16 +55,16 @@ export const ParameterControl: React.FC<ParameterControlProps> = ({
     case "select":
       controlElement = (
         <Select
-          value={value.toString()}
+          value={safeValue.toString()}
           onValueChange={e => onChange(Number(e))}
           disabled={isLocked}>
-          <SelectTrigger id="formulaType">
-            <SelectValue placeholder="Select formula type" />
+          <SelectTrigger id={paramKey}>
+            <SelectValue placeholder={`Select ${metadata.name}`} />
           </SelectTrigger>
           <SelectContent>
-            {metadata?.choices?.map(key => (
+            {metadata?.choices?.map((key, i) => (
               <SelectItem key={key} value={key.toString()}>
-                {key}
+                {metadata.choiceLabels?.[i] ?? key}
               </SelectItem>
             ))}
           </SelectContent>
@@ -75,7 +79,7 @@ export const ParameterControl: React.FC<ParameterControlProps> = ({
           min={metadata.min}
           max={metadata.max}
           step={metadata.step}
-          value={[value]}
+          value={[safeValue]}
           onValueChange={([newValue]) => onChange(newValue)}
           disabled={isLocked}
         />
@@ -91,7 +95,11 @@ export const ParameterControl: React.FC<ParameterControlProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            {metadata.controlType === "toggle" ? (value ? "On" : "Off") : value?.toFixed(2)}
+            {metadata.controlType === "toggle"
+              ? (safeValue ? "On" : "Off")
+              : metadata.controlType === "select"
+                ? (metadata.choiceLabels?.[metadata.choices?.indexOf(Number(safeValue)) ?? -1] ?? safeValue)
+                : safeValue.toFixed(2)}
           </span>
           <Button variant="ghost" size="icon" onClick={onToggleLock}>
             {isLocked ? <LockIcon /> : <LockOpenIcon />}

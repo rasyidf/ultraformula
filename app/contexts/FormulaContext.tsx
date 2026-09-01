@@ -4,13 +4,16 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useCameraSettings, type CameraSettings } from '~/hooks/useCameraSettings';
 import { useCanvasSettings, type CanvasSettings } from '~/hooks/useCanvasSettings';
 import { useFormula, type FormulaState } from '~/hooks/useFormula';
-import type { Formula, FormulaParams, ParameterMetadata } from '~/types/Formula';
+import { getFormula } from '~/lib/formulas';
+import { getAvailableViews, resolveActiveView } from '~/lib/renderViews';
+import type { Formula, FormulaMetadata, FormulaParams } from '~/types/Formula';
+import type { RenderView } from '~/types/RenderView';
 
 interface FormulaContextType {
   // Formula state and methods
   formulaState: FormulaState;
   formulas: Record<string, Formula>;
-  getFormulaMetadata: () => { name: string; description: string; parameters: Record<string, ParameterMetadata>; supportedDimensions: ('2d' | '3d')[] };
+  getFormulaMetadata: () => FormulaMetadata;
   updateParam: (key: keyof FormulaParams, value: number) => void;
   toggleParamLock: (paramName: string) => void;
   randomizeParams: () => void;
@@ -25,7 +28,11 @@ interface FormulaContextType {
   
   // Canvas settings
   canvasSettings: CanvasSettings;
-  setRenderMode: (mode: '2d' | '3d') => void;
+  setActiveViewId: (id: string) => void;
+  /** Render views the current formula supports. */
+  availableViews: RenderView[];
+  /** The resolved active render view (falls back to the first available). */
+  activeView: RenderView | null;
   setBackgroundColor: (color: string) => void;
   setScale: (scale: number) => void;
   setAutoRotate: (value: boolean) => void;
@@ -55,8 +62,12 @@ export function FormulaProvider({ children }: { children: ReactNode; }) {
   const formula = useFormula();
   const canvasSettings = useCanvasSettings();
   const camera = useCameraSettings();
-  
+
   const [formulas, setFormulas] = useState<string[]>([]);
+
+  const currentFormula = getFormula(formula.state.formulaType);
+  const availableViews = getAvailableViews(currentFormula);
+  const activeView = resolveActiveView(currentFormula, canvasSettings.settings.activeViewId);
 
   const addFormula = (formula: string) => {
     setFormulas([...formulas, formula]);
@@ -86,7 +97,9 @@ export function FormulaProvider({ children }: { children: ReactNode; }) {
       
       // Canvas settings
       canvasSettings: canvasSettings.settings,
-      setRenderMode: canvasSettings.setRenderMode,
+      setActiveViewId: canvasSettings.setActiveViewId,
+      availableViews,
+      activeView,
       setBackgroundColor: canvasSettings.setBackgroundColor,
       setScale: canvasSettings.setScale,
       setAutoRotate: canvasSettings.setAutoRotate,

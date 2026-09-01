@@ -55,13 +55,14 @@ export class TerrainFormula extends BaseFormula {
       },
       fbmMode: {
         name: "fBm mode",
-        description: "0 = standard hills, 1 = ridged mountains, 2 = billowed dunes",
+        description: "How octaves combine: rolling hills, sharp ridges, or rounded dunes",
         min: 0,
         max: 2,
         step: 1,
         default: 0,
         controlType: "select",
         choices: [0, 1, 2],
+        choiceLabels: ["Standard (hills)", "Ridged (mountains)", "Billowed (dunes)"],
         isLocked: false
       }
     }

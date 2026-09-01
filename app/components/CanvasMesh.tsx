@@ -34,7 +34,7 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
   const meshRef = useRef<THREE.Mesh>(null);
 
   const geometry = useMemo(() => {
-    return formula.createGeometry(params);
+    return formula.createGeometry?.(params) ?? new THREE.BufferGeometry();
   }, [params, formula]);
 
   useFrame(({ clock }) => {

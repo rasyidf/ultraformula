@@ -2,7 +2,7 @@
 "use client";
 import { useState } from "react";
 
-import { Cuboid as Cube, DicesIcon, SquareStackIcon } from "lucide-react";
+import { ChevronDown, DicesIcon, Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
@@ -12,7 +12,9 @@ import { getFormula } from "~/lib/formulas";
 import { ParameterControl } from "./ParameterControl";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Button } from "./ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { ColorPicker } from "./ui/color-picker";
+import { ScrollArea } from "./ui/scroll-area";
 import { SidebarContent, SidebarFooter, SidebarHeader } from "./ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
@@ -36,7 +38,9 @@ export function MainSidebar() {
 
     // Canvas settings
     canvasSettings,
-    setRenderMode,
+    setActiveViewId,
+    availableViews,
+    activeView,
     setBackgroundColor,
     setEnvironmentPreset,
     setShowEnvironment,
@@ -50,10 +54,8 @@ export function MainSidebar() {
     "studio", "city", "park", "lobby"
   ];
 
-  // Check if the current formula supports 2D rendering
   const currentFormula = getFormula(formulaState.formulaType);
-  const supports2D = currentFormula.metadata.supportedDimensions.includes('2d');
-  const supports3D = currentFormula.metadata.supportedDimensions.includes('3d');
+  const is3DView = activeView?.dimension === '3d';
   // Search/filter state
   // Collect all categories/tags from formulas
   const allCategories = Array.from(new Set(Object.values(formulas).flatMap(f => f.metadata.categories ?? [])));
@@ -63,6 +65,8 @@ export function MainSidebar() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("");
   const [tag, setTag] = useState<string>("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount = (category ? 1 : 0) + (tag ? 1 : 0);
 
   // Filter formulas by search/category/tag
   const filteredFormulaKeys = Object.keys(formulas).filter(key => {
@@ -73,92 +77,141 @@ export function MainSidebar() {
     return matchesSearch && matchesCategory && matchesTag;
   });
   return (<>
-    <SidebarHeader className="h-auto px-4 flex flex-col items-center gap-4">
-      <div className="space-y-2 w-full">
-        <Label htmlFor="formulaSearch">Search Formula</Label>
-        <Input
-          id="formulaSearch"
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name or description"
-        />
-      </div>
-      <div className="space-y-2 w-full">
-        <Label htmlFor="categorySelect">Category</Label>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger id="categorySelect">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            {allCategories.map(cat => (
-              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2 w-full">
-        <Label htmlFor="tagSelect">Tag</Label>
-        <Select value={tag} onValueChange={setTag}>
-          <SelectTrigger id="tagSelect">
-            <SelectValue placeholder="All tags" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            {allTags.map(t => (
-              <SelectItem key={t} value={t}>{t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <SidebarHeader className="h-auto px-4 flex flex-col items-center gap-3">
+      <div className="w-full space-y-2">
+        <div className="relative w-full">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="formulaSearch"
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search formulas"
+            className="pl-8"
+          />
+        </div>
+
+        <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={() => { setCategory(""); setTag(""); }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <CollapsibleContent className="pt-2">
+            <div className="flex gap-2">
+              <Select value={category || "all"} onValueChange={v => setCategory(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {allCategories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={tag || "all"} onValueChange={v => setTag(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Tag" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All tags</SelectItem>
+                  {allTags.map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
-      <div className="space-y-2 w-full">
-        <Label htmlFor="formulaType">Formula Type</Label>
-        <Select value={formulaState.formulaType} onValueChange={setFormulaType}>
-          <SelectTrigger id="formulaType">
-            <SelectValue placeholder="Select formula type" />
-          </SelectTrigger>
-          <SelectContent>
-            {filteredFormulaKeys.map(key => (
-              <SelectItem key={key} value={key}>
-                {formulas[key].metadata.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="w-full space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label>Formula</Label>
+          <span className="text-xs text-muted-foreground">
+            {filteredFormulaKeys.length} of {Object.keys(formulas).length}
+          </span>
+        </div>
+        <ScrollArea className="h-72 w-full rounded-md border">
+          <div className="divide-y">
+            {filteredFormulaKeys.length === 0 && (
+              <p className="p-3 text-sm text-muted-foreground">No formulas match your filters.</p>
+            )}
+            {filteredFormulaKeys.map(key => {
+              const meta = formulas[key].metadata;
+              const isActive = key === formulaState.formulaType;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFormulaType(key)}
+                  aria-pressed={isActive}
+                  className={`w-full text-left px-3 py-2 transition-colors ${
+                    isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+                  }`}
+                >
+                  <div className="text-sm font-medium">{meta.name}</div>
+                  <div className="text-xs text-muted-foreground line-clamp-2">{meta.description}</div>
+                  {meta.categories && meta.categories.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {meta.categories.slice(0, 3).map(c => (
+                        <span
+                          key={c}
+                          className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </div>
 
-      <div className="space-y-2 w-full">
-        <Label htmlFor="renderMode">Render Mode</Label>
-        <ToggleGroup
-          type="single"
-          value={canvasSettings.renderMode}
-          onValueChange={(value) => {
-            if (value) setRenderMode(value as '2d' | '3d');
-          }}
-          className="w-full justify-center"
-        >
-          <ToggleGroupItem
-            value="2d"
-            disabled={!supports2D}
-            aria-label="Toggle 2D mode"
-            className="flex-1"
+      {availableViews.length > 1 && (
+        <div className="space-y-2 w-full">
+          <Label htmlFor="renderMode">Render View</Label>
+          <ToggleGroup
+            type="single"
+            value={activeView?.id}
+            onValueChange={(value) => {
+              if (value) setActiveViewId(value);
+            }}
+            className="w-full justify-center"
           >
-            <SquareStackIcon className="mr-1 h-4 w-4" />
-            2D
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="3d"
-            disabled={!supports3D}
-            aria-label="Toggle 3D mode"
-            className="flex-1"
-          >
-            <Cube className="mr-1 h-4 w-4" />
-            3D
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
+            {availableViews.map((view) => {
+              const Icon = view.icon;
+              return (
+                <ToggleGroupItem
+                  key={view.id}
+                  value={view.id}
+                  aria-label={`Switch to ${view.label}`}
+                  className="flex-1"
+                >
+                  {Icon && <Icon className="mr-1 h-4 w-4" />}
+                  {view.label}
+                </ToggleGroupItem>
+              );
+            })}
+          </ToggleGroup>
+        </div>
+      )}
     </SidebarHeader>
     <SidebarContent>
       <div className="w-full p-4 h-auto lg:h-[calc(100vh-8rem)] overflow-y-auto">
@@ -196,7 +249,7 @@ export function MainSidebar() {
                 <AccordionTrigger>Material Settings</AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-4">
-                    {canvasSettings.renderMode === '3d' && (
+                    {is3DView && (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="materialType">Material Type</Label>
@@ -268,7 +321,7 @@ export function MainSidebar() {
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="meshColor">{canvasSettings.renderMode === '2d' ? 'Line Color' : 'Mesh Color'}</Label>
+                      <Label htmlFor="meshColor">{activeView?.dimension === '2d' ? 'Line Color' : 'Mesh Color'}</Label>
                       <div className="flex items-center space-x-1">
                         <ColorPicker color={formulaState.meshColor} onChange={(e) => setMeshColor(e)} />
                         <Input
@@ -300,7 +353,7 @@ export function MainSidebar() {
                       </div>
                     </div>
 
-                    {canvasSettings.renderMode === '3d' && (
+                    {is3DView && (
                       <>
                         <div className="flex items-center space-x-2">
                           <Switch

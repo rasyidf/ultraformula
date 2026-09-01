@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 export interface CanvasSettings {
   backgroundColor: string;
-  renderMode: '2d' | '3d';
+  activeViewId: string;
   scale: number;
   autoRotate: boolean;
   showAxes: boolean;
@@ -17,7 +17,7 @@ export interface CanvasSettings {
 export function useCanvasSettings() {
   const [settings, setSettings] = useState<CanvasSettings>({
     backgroundColor: "#f0f0f0",
-    renderMode: '3d',
+    activeViewId: 'mesh3d',
     scale: 1,
     autoRotate: false,
     showAxes: false,
@@ -33,8 +33,8 @@ export function useCanvasSettings() {
     setSettings(prev => ({ ...prev, ...updatedSettings }));
   };
 
-  const setRenderMode = (mode: '2d' | '3d') => {
-    setSettings(prev => ({ ...prev, renderMode: mode }));
+  const setActiveViewId = (id: string) => {
+    setSettings(prev => ({ ...prev, activeViewId: id }));
   };
 
   const setBackgroundColor = (color: string) => {
@@ -80,7 +80,7 @@ export function useCanvasSettings() {
   return {
     settings,
     updateSettings,
-    setRenderMode,
+    setActiveViewId,
     setBackgroundColor,
     setScale,
     setAutoRotate,

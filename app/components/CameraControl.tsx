@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 export function CameraControls() {
   const {
     canvasSettings,
+    activeView,
     setScale,
     cameraSettings,
     setAmbientLightIntensity,
@@ -22,7 +23,7 @@ export function CameraControls() {
     setShowShadows,
   } = useSuperformulaContext();
 
-  const is3D = canvasSettings.renderMode === '3d';
+  const is3D = activeView?.dimension === '3d';
 
   return (
     <div className="p-4 space-y-4">
