@@ -1,7 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { FormulaParams } from "~/types/Formula";
 import { getNodeDefinition } from "./nodes";
-import type { GraphEdge, GraphNode } from "./types";
+import { isParamHandle, type GraphEdge, type GraphNode } from "./types";
 
 export interface PipelineNodeData {
   nodeType: string;
@@ -76,6 +76,47 @@ export function toGraphEdges(edges: RFEdge[]): GraphEdge[] {
       target: e.target,
       targetHandle: e.targetHandle as string,
     }));
+}
+
+/**
+ * Can `type` be spliced into `edge` (drop-on-connection)? Returns the handles to
+ * use on the new node, or null if it wouldn't fit.
+ */
+export function edgeInsertPlan(
+  type: string,
+  edge: RFEdge,
+  nodes: RFNode[],
+): { inHandle: string; outHandle: string } | null {
+  if (isParamHandle(edge.targetHandle)) return null;
+  const newDef = getNodeDefinition(type);
+  const srcNode = nodes.find((n) => n.id === edge.source);
+  const tgtNode = nodes.find((n) => n.id === edge.target);
+  if (!newDef || !srcNode || !tgtNode) return null;
+
+  const srcDef = getNodeDefinition(srcNode.data.nodeType);
+  const tgtDef = getNodeDefinition(tgtNode.data.nodeType);
+  if (!srcDef || !tgtDef) return null;
+
+  const srcType = srcDef.outputs.find((p) => p.id === edge.sourceHandle)?.type;
+  if (!srcType || srcType === "number") return null;
+
+  const inHandle = newDef.inputs.find((p) => p.type === srcType)?.id;
+  if (!inHandle) return null;
+
+  let outHandle: string | undefined;
+  if (tgtDef.type === "output") {
+    // Output accepts field / heightmap / tilegrid / geometry — take any.
+    outHandle = (
+      newDef.outputs.find((p) => p.type === srcType) ??
+      newDef.outputs.find((p) => p.type !== "number") ??
+      newDef.outputs[0]
+    )?.id;
+  } else {
+    const tgtType = tgtDef.inputs.find((p) => p.id === edge.targetHandle)?.type;
+    outHandle = newDef.outputs.find((p) => p.type === tgtType)?.id;
+  }
+  if (!outHandle) return null;
+  return { inHandle, outHandle };
 }
 
 /** Default graph: Perlin terrain -> Output. */

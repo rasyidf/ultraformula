@@ -12,6 +12,7 @@ import { clearEvalCache } from "~/lib/pipeline/evaluate";
 import {
   defaultConfig,
   defaultParams,
+  edgeInsertPlan,
   makeNode,
   nextId,
   seedGraph,
@@ -23,19 +24,28 @@ export interface PipelineState {
   nodes: RFNode[];
   edges: RFEdge[];
   selectedNodeId: string | null;
+  /** node type currently being dragged from the library (transient) */
+  draggingNodeType: string | null;
 
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
 
   setSelectedNode: (id: string | null) => void;
+  setDraggingNodeType: (type: string | null) => void;
   addNode: (type: string, position?: { x: number; y: number }) => void;
+  insertNodeOnEdge: (
+    type: string,
+    edgeId: string,
+    position: { x: number; y: number },
+  ) => boolean;
   removeNode: (id: string) => void;
   duplicateNode: (id: string) => void;
   updateNodeParam: (id: string, key: string, value: number) => void;
   updateNodeConfig: (id: string, key: string, value: string) => void;
   toggleNodeExpanded: (id: string) => void;
   selectAllNodes: () => void;
+  setNodePositions: (positions: Map<string, { x: number; y: number }>) => void;
 
   setGraph: (nodes: RFNode[], edges: RFEdge[]) => void;
   reset: () => void;
@@ -49,6 +59,7 @@ export const usePipelineStore = create<PipelineState>()(
       nodes: seeded.nodes,
       edges: seeded.edges,
       selectedNodeId: null,
+      draggingNodeType: null,
 
       onNodesChange: (changes) => {
         set({ nodes: applyNodeChanges(changes, get().nodes) as RFNode[] });
@@ -69,6 +80,7 @@ export const usePipelineStore = create<PipelineState>()(
       },
 
       setSelectedNode: (id) => set({ selectedNodeId: id }),
+      setDraggingNodeType: (type) => set({ draggingNodeType: type }),
 
       addNode: (type, position) => {
         const node = makeNode(
@@ -76,6 +88,36 @@ export const usePipelineStore = create<PipelineState>()(
           position ?? { x: 120 + Math.random() * 240, y: 80 + Math.random() * 240 },
         );
         set({ nodes: [...get().nodes, node], selectedNodeId: node.id });
+      },
+
+      insertNodeOnEdge: (type, edgeId, position) => {
+        const edge = get().edges.find((e) => e.id === edgeId);
+        if (!edge) return false;
+        const plan = edgeInsertPlan(type, edge, get().nodes);
+        if (!plan) return false;
+        const node = makeNode(type, position);
+        set({
+          nodes: [...get().nodes, node],
+          edges: [
+            ...get().edges.filter((e) => e.id !== edgeId),
+            {
+              id: nextId("e"),
+              source: edge.source,
+              sourceHandle: edge.sourceHandle,
+              target: node.id,
+              targetHandle: plan.inHandle,
+            },
+            {
+              id: nextId("e"),
+              source: node.id,
+              sourceHandle: plan.outHandle,
+              target: edge.target,
+              targetHandle: edge.targetHandle,
+            },
+          ],
+          selectedNodeId: node.id,
+        });
+        return true;
       },
 
       removeNode: (id) => {
@@ -137,6 +179,14 @@ export const usePipelineStore = create<PipelineState>()(
         set({
           nodes: get().nodes.map((n) => ({ ...n, selected: true })),
           selectedNodeId: null,
+        });
+      },
+
+      setNodePositions: (positions) => {
+        set({
+          nodes: get().nodes.map((n) =>
+            positions.has(n.id) ? { ...n, position: positions.get(n.id)! } : n,
+          ),
         });
       },
 

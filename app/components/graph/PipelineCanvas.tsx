@@ -8,18 +8,23 @@ import {
   type Connection,
   type IsValidConnection,
 } from "@xyflow/react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CATEGORY_COLOR, nodeTypes } from "~/components/graph/nodeTypes";
+import { edgeInsertPlan } from "~/lib/pipeline/graphHelpers";
 import { getNodeDefinition } from "~/lib/pipeline/nodes";
-import {
-  isParamHandle,
-  PORT_COLORS,
-  type PortType,
-} from "~/lib/pipeline/types";
+import { isParamHandle, PORT_COLORS, type PortType } from "~/lib/pipeline/types";
 import { usePipelineStore } from "~/stores/pipelineStore";
-import { CATEGORY_COLOR, nodeTypes } from "./nodeTypes";
 
 interface Props {
   errorNodeIds: Set<string>;
+}
+
+function findEdgeAt(x: number, y: number): string | null {
+  for (const el of document.elementsFromPoint(x, y)) {
+    const g = (el as Element).closest?.(".react-flow__edge");
+    if (g) return g.getAttribute("data-id");
+  }
+  return null;
 }
 
 export function PipelineCanvas({ errorNodeIds }: Props) {
@@ -30,7 +35,18 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
   const onConnect = usePipelineStore((s) => s.onConnect);
   const setSelectedNode = usePipelineStore((s) => s.setSelectedNode);
   const addNode = usePipelineStore((s) => s.addNode);
+  const insertNodeOnEdge = usePipelineStore((s) => s.insertNodeOnEdge);
+  const draggingNodeType = usePipelineStore((s) => s.draggingNodeType);
+  const setDraggingNodeType = usePipelineStore((s) => s.setDraggingNodeType);
   const { screenToFlowPosition } = useReactFlow();
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [preview, setPreview] = useState<{ x: number; y: number } | null>(null);
+  const [insertEdgeId, setInsertEdgeId] = useState<string | null>(null);
+
+  const draggingDef = draggingNodeType
+    ? getNodeDefinition(draggingNodeType)
+    : undefined;
 
   const outputPortType = useCallback(
     (nodeId: string, handleId?: string | null): PortType | undefined => {
@@ -61,12 +77,13 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
           ...e,
           type: "default",
           animated: true,
+          className: e.id === insertEdgeId ? "pipeline-edge-drop" : undefined,
           style: isParam
             ? { stroke, strokeWidth: 1.5, strokeDasharray: "4 3" }
             : { stroke, strokeWidth: 2 },
         };
       }),
-    [edges, outputPortType],
+    [edges, outputPortType, insertEdgeId],
   );
 
   const isValidConnection = useCallback<IsValidConnection>(
@@ -79,7 +96,6 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
       if (!sdef || !tdef) return false;
       const out = sdef.outputs.find((p) => p.id === edge.sourceHandle);
       if (!out) return false;
-
       if (isParamHandle(edge.targetHandle)) return out.type === "number";
       if (tdef.type === "output") return out.type !== "number";
       const inp = tdef.inputs.find((p) => p.id === edge.targetHandle);
@@ -88,57 +104,118 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
     [nodes],
   );
 
-  const onDrop = useCallback(
+  const clearDrag = useCallback(() => {
+    setPreview(null);
+    setInsertEdgeId(null);
+  }, []);
+
+  // Track the pointer for the floating preview + edge-insert highlight while a
+  // library node is being dragged (anywhere on the page).
+  useEffect(() => {
+    if (!draggingNodeType) {
+      clearDrag();
+      return;
+    }
+    const onOver = (e: DragEvent) => {
+      setPreview({ x: e.clientX, y: e.clientY });
+      const edgeId = findEdgeAt(e.clientX, e.clientY);
+      const edge = edgeId ? edges.find((ed) => ed.id === edgeId) : undefined;
+      setInsertEdgeId(
+        edge && edgeInsertPlan(draggingNodeType, edge, nodes) ? edgeId : null,
+      );
+    };
+    window.addEventListener("dragover", onOver);
+    return () => window.removeEventListener("dragover", onOver);
+  }, [draggingNodeType, edges, nodes, clearDrag]);
+
+  const handleDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const type = event.dataTransfer.getData("application/x-pipeline-node");
+      const type =
+        event.dataTransfer.getData("application/x-pipeline-node") ||
+        draggingNodeType;
+      clearDrag();
+      setDraggingNodeType(null);
       if (!type) return;
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
+      if (insertEdgeId && insertNodeOnEdge(type, insertEdgeId, position)) return;
       addNode(type, position);
     },
-    [addNode, screenToFlowPosition],
+    [
+      addNode,
+      clearDrag,
+      draggingNodeType,
+      insertEdgeId,
+      insertNodeOnEdge,
+      screenToFlowPosition,
+      setDraggingNodeType,
+    ],
   );
 
   return (
-    <ReactFlow
-      nodes={decoratedNodes}
-      edges={decoratedEdges}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={(c: Connection) => onConnect(c)}
-      isValidConnection={isValidConnection}
-      onSelectionChange={({ nodes: sel }) =>
-        setSelectedNode(sel.length === 1 ? sel[0].id : null)
-      }
-      onDrop={onDrop}
+    <div
+      ref={wrapperRef}
+      className="relative h-full w-full"
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
       }}
-      fitView
-      minZoom={0.2}
-      maxZoom={2.5}
-      deleteKeyCode={["Backspace", "Delete"]}
-      connectionRadius={28}
-      connectionLineStyle={{ strokeWidth: 2, stroke: "var(--primary)" }}
-      defaultEdgeOptions={{ type: "default", animated: true }}
+      onDrop={handleDrop}
     >
-      <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-      <Controls />
-      <MiniMap
-        pannable
-        zoomable
-        nodeColor={(n) => {
-          const def = getNodeDefinition(
-            (n.data as { nodeType: string }).nodeType,
-          );
-          return def ? CATEGORY_COLOR[def.category] : "#64748b";
-        }}
-      />
-    </ReactFlow>
+      <ReactFlow
+        nodes={decoratedNodes}
+        edges={decoratedEdges}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={(c: Connection) => onConnect(c)}
+        isValidConnection={isValidConnection}
+        onSelectionChange={({ nodes: sel }) =>
+          setSelectedNode(sel.length === 1 ? sel[0].id : null)
+        }
+        fitView
+        minZoom={0.2}
+        maxZoom={2.5}
+        deleteKeyCode={["Backspace", "Delete"]}
+        connectionRadius={30}
+        connectionLineStyle={{ strokeWidth: 2, stroke: "var(--primary)" }}
+        defaultEdgeOptions={{ type: "default", animated: true }}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+        <Controls />
+        <MiniMap
+          pannable
+          zoomable
+          nodeColor={(n) => {
+            const def = getNodeDefinition(
+              (n.data as { nodeType: string }).nodeType,
+            );
+            return def ? CATEGORY_COLOR[def.category] : "#64748b";
+          }}
+        />
+      </ReactFlow>
+
+      {draggingDef && preview && (
+        <div
+          className="pointer-events-none fixed z-50 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-xl"
+          style={{
+            left: preview.x + 12,
+            top: preview.y + 14,
+            background: CATEGORY_COLOR[draggingDef.category],
+          }}
+        >
+          {draggingDef.label}
+          {insertEdgeId && (
+            <span className="rounded bg-white/25 px-1 text-[10px] font-medium">
+              insert
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

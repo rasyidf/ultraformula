@@ -1,9 +1,4 @@
-import {
-  Handle,
-  Position,
-  useUpdateNodeInternals,
-  type NodeProps,
-} from "@xyflow/react";
+import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { ChevronDown } from "lucide-react";
 import { memo, useEffect } from "react";
 import type { ParameterMetadata } from "~/types/Formula";
@@ -20,11 +15,21 @@ import { cn } from "~/lib/utils";
 import { usePipelineStore } from "~/stores/pipelineStore";
 import { CATEGORY_COLOR } from "./nodeTypes";
 
-const HANDLE_BASE =
-  "!static !transform-none !translate-x-0 !translate-y-0 !min-w-0";
-
-function dotStyle(type: PortType) {
-  return { background: PORT_COLORS[type], border: "2px solid var(--card)" };
+function portHandleStyle(
+  type: PortType,
+  side: "left" | "right",
+  size = 11,
+): React.CSSProperties {
+  const style: React.CSSProperties = {
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: size,
+    height: size,
+    background: PORT_COLORS[type],
+    border: "2px solid var(--card)",
+  };
+  style[side] = -(size / 2);
+  return style;
 }
 
 function fmt(v: unknown) {
@@ -70,24 +75,31 @@ export const PipelineNode = memo(function PipelineNode({
   const linked = new Set(linkedKey ? linkedKey.split("|") : []);
   const color = CATEGORY_COLOR[def.category];
   const params = Object.entries(def.params);
+  const shownParams = expanded
+    ? params
+    : params.filter(([k]) => linked.has(k));
+  const hiddenCount = params.length - shownParams.length;
 
   return (
     <div
       className={cn(
-        "w-60 rounded-lg border bg-card text-card-foreground shadow-sm",
-        selected ? "border-primary ring-2 ring-primary" : "border-border",
+        "w-[232px] overflow-hidden rounded-xl border bg-card text-card-foreground shadow-md transition-shadow",
+        selected
+          ? "border-primary ring-2 ring-primary/60"
+          : "border-border hover:shadow-lg",
       )}
     >
       <div
-        className="flex items-center justify-between gap-1 rounded-t-lg px-2 py-1 text-xs font-semibold text-white"
+        className="flex cursor-grab items-center justify-between gap-1 px-2.5 py-1.5 text-xs font-semibold text-white active:cursor-grabbing"
         style={{ background: color }}
+        onDoubleClick={() => params.length > 0 && toggleExpanded(id)}
       >
         <span className="truncate">{def.label}</span>
         {params.length > 0 && (
           <button
             type="button"
-            className="nodrag rounded p-0.5 hover:bg-white/20"
-            title={expanded ? "Collapse parameters" : "Expand parameters"}
+            className="nodrag -m-0.5 rounded p-0.5 hover:bg-white/25"
+            title={expanded ? "Collapse parameters" : "Show all parameters"}
             onClick={(e) => {
               e.stopPropagation();
               toggleExpanded(id);
@@ -107,75 +119,68 @@ export const PipelineNode = memo(function PipelineNode({
         {def.inputs.map((port) => (
           <div
             key={port.id}
-            className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
+            className="relative flex items-center gap-2 px-3 py-1 text-[11px]"
           >
             <Handle
               id={port.id}
               type="target"
               position={Position.Left}
-              className={cn(HANDLE_BASE, "!h-2.5 !w-2.5")}
-              style={dotStyle(port.type)}
+              style={portHandleStyle(port.type, "left")}
             />
-            <span>{port.label}</span>
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: PORT_COLORS[port.type] }}
+            />
+            <span className="text-muted-foreground">{port.label}</span>
           </div>
         ))}
 
         {def.outputs.map((port) => (
           <div
             key={port.id}
-            className="flex items-center justify-end gap-1.5 px-2 py-1 text-[11px]"
+            className="relative flex items-center justify-end gap-2 px-3 py-1 text-[11px]"
           >
-            <span>{port.label}</span>
+            <span className="font-medium">{port.label}</span>
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: PORT_COLORS[port.type] }}
+            />
             <Handle
               id={port.id}
               type="source"
               position={Position.Right}
-              className={cn(HANDLE_BASE, "!h-2.5 !w-2.5")}
-              style={dotStyle(port.type)}
+              style={portHandleStyle(port.type, "right")}
             />
           </div>
         ))}
 
-        {params.length > 0 &&
-          (expanded ? (
-            <div className="mt-1 space-y-0.5 border-t pt-1">
-              {params.map(([key, meta]) => (
-                <ParamRow
-                  key={key}
-                  paramKey={key}
-                  meta={meta}
-                  value={nodeData.params[key]}
-                  linked={linked.has(key)}
-                  onChange={(v) => updateNodeParam(id, key, v)}
-                />
-              ))}
-            </div>
-          ) : (
-            <>
-              {params
-                .filter(([key]) => linked.has(key))
-                .map(([key, meta]) => (
-                  <ParamRow
-                    key={key}
-                    paramKey={key}
-                    meta={meta}
-                    value={nodeData.params[key]}
-                    linked
-                    onChange={() => {}}
-                  />
-                ))}
-              <div className="px-2 pt-0.5 text-[10px] text-muted-foreground">
-                {params
-                  .filter(([k]) => !linked.has(k))
-                  .slice(0, 3)
-                  .map(([k]) => (
-                    <div key={k} className="truncate">
-                      {k}: {fmt(nodeData.params[k])}
-                    </div>
-                  ))}
-              </div>
-            </>
-          ))}
+        {(shownParams.length > 0 || hiddenCount > 0) && (
+          <div className="mt-1 border-t pt-1">
+            {shownParams.map(([key, meta]) => (
+              <ParamRow
+                key={key}
+                paramKey={key}
+                meta={meta}
+                value={nodeData.params[key]}
+                linked={linked.has(key)}
+                onChange={(v) => updateNodeParam(id, key, v)}
+              />
+            ))}
+            {!expanded && hiddenCount > 0 && (
+              <button
+                type="button"
+                className="nodrag w-full px-3 py-0.5 text-left text-[10px] text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpanded(id);
+                }}
+              >
+                {shownParams.length > 0 ? "+ " : ""}
+                {hiddenCount} more parameter{hiddenCount > 1 ? "s" : ""}…
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -195,19 +200,18 @@ function ParamRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-0.5 text-[11px]">
+    <div className="relative flex items-center gap-1.5 px-3 py-[3px] text-[11px]">
       <Handle
         id={`${PARAM_HANDLE_PREFIX}${paramKey}`}
         type="target"
         position={Position.Left}
-        className={cn(HANDLE_BASE, "!h-2 !w-2")}
-        style={dotStyle("number")}
+        style={portHandleStyle("number", "left", 9)}
       />
       <span className="min-w-0 flex-1 truncate text-muted-foreground">
         {meta.name}
       </span>
       {linked ? (
-        <span className="rounded bg-muted px-1 text-[9px] uppercase text-muted-foreground">
+        <span className="rounded bg-sky-500/15 px-1 text-[9px] font-medium uppercase text-sky-500">
           linked
         </span>
       ) : (
@@ -232,7 +236,7 @@ function ParamMiniControl({
   if (meta.controlType === "select") {
     return (
       <select
-        className="nodrag w-24 rounded border bg-background px-1 py-0.5 text-[10px]"
+        className="nodrag max-w-[110px] rounded border bg-background px-1 py-0.5 text-[10px]"
         value={String(v)}
         onPointerDown={stop}
         onChange={(e) => onChange(Number(e.target.value))}
@@ -250,7 +254,7 @@ function ParamMiniControl({
     return (
       <input
         type="checkbox"
-        className="nodrag"
+        className="nodrag accent-primary"
         checked={!!v}
         onPointerDown={stop}
         onChange={(e) => onChange(e.target.checked ? 1 : 0)}
@@ -261,7 +265,7 @@ function ParamMiniControl({
   return (
     <input
       type="number"
-      className="nodrag w-16 rounded border bg-background px-1 py-0.5 text-right text-[10px]"
+      className="nodrag w-16 rounded border bg-background px-1 py-0.5 text-right text-[10px] tabular-nums"
       value={v}
       min={meta.min}
       max={meta.max}

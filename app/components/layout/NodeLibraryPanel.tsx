@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { GripVertical, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CATEGORY_COLOR } from "~/components/graph/nodeTypes";
 import { Input } from "~/components/ui/input";
@@ -6,6 +6,19 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { nodeDefinitions } from "~/lib/pipeline/nodes";
 import type { NodeCategory, NodeDefinition } from "~/lib/pipeline/types";
 import { usePipelineStore } from "~/stores/pipelineStore";
+
+// 1x1 transparent gif — hides the native drag ghost so only the in-app
+// floating preview (PipelineCanvas) shows.
+let transparentImg: HTMLImageElement | undefined;
+function getTransparentImg() {
+  if (typeof Image === "undefined") return undefined;
+  if (!transparentImg) {
+    transparentImg = new Image();
+    transparentImg.src =
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  }
+  return transparentImg;
+}
 
 const CATEGORY_ORDER: NodeCategory[] = [
   "Input",
@@ -20,6 +33,7 @@ const CATEGORY_ORDER: NodeCategory[] = [
 export function NodeLibraryPanel() {
   const [search, setSearch] = useState("");
   const addNode = usePipelineStore((s) => s.addNode);
+  const setDraggingNodeType = usePipelineStore((s) => s.setDraggingNodeType);
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -75,16 +89,20 @@ export function NodeLibraryPanel() {
                         def.type,
                       );
                       e.dataTransfer.effectAllowed = "move";
+                      const img = getTransparentImg();
+                      if (img) e.dataTransfer.setDragImage(img, 0, 0);
+                      setDraggingNodeType(def.type);
                     }}
+                    onDragEnd={() => setDraggingNodeType(null)}
                     onClick={() => addNode(def.type)}
                     title={def.description}
-                    className="flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors hover:border-border hover:bg-accent"
+                    className="group flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors hover:border-border hover:bg-accent"
                   >
                     <span
                       className="mt-1 h-2 w-2 shrink-0 rounded-full"
                       style={{ background: CATEGORY_COLOR[def.category] }}
                     />
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block text-xs font-medium leading-tight">
                         {def.label}
                       </span>
@@ -94,6 +112,7 @@ export function NodeLibraryPanel() {
                         </span>
                       )}
                     </span>
+                    <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
                   </button>
                 ))}
               </div>
