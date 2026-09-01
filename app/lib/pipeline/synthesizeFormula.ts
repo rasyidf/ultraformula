@@ -20,7 +20,7 @@ export function synthesizeFormula(value: PortValue): Formula {
       const geometryData: GeometryData | null = is3d
         ? field.makeGeometry
           ? field.makeGeometry()
-          : gridGeometryFromField(field)
+          : gridGeometryFromField(field, { resolution: 64, heightScale: 4 })
         : null;
       const renderViews = is3d
         ? field.makePlot

@@ -2,30 +2,46 @@ import type { Field, GeometryData, Heightmap } from "../types";
 
 const GRID_SIZE = 50;
 
-/**
- * Grid sampler, mirroring PerlinNoise.createTerrainGeometry: a GRID_SIZE x
- * GRID_SIZE lattice over x,z in [-25, 25) with y = field.sample(x, 0, z).
- */
-export function gridGeometryFromField(field: Field): GeometryData {
-  const size = GRID_SIZE;
-  const positions = new Float32Array(size * size * 3);
-  const indices: number[] = [];
+export interface GridGeometryOpts {
+  /** vertices per side */
+  resolution?: number;
+  /** world width of the plane */
+  worldSize?: number;
+  /** vertical exaggeration applied to sampled values */
+  heightScale?: number;
+}
 
-  for (let i = 0; i < size; i++) {
-    for (let j = 0; j < size; j++) {
-      const x = i - size / 2;
-      const z = j - size / 2;
-      const y = field.sample(x, 0, z);
-      const p = (i * size + j) * 3;
+/**
+ * Grid sampler, mirroring PerlinNoise.createTerrainGeometry: a `resolution` x
+ * `resolution` lattice over x,z in [-worldSize/2, worldSize/2] with
+ * y = field.sample(x, 0, z) * heightScale.
+ */
+export function gridGeometryFromField(
+  field: Field,
+  opts: GridGeometryOpts = {},
+): GeometryData {
+  const res = Math.max(2, Math.round(opts.resolution ?? GRID_SIZE));
+  const worldSize = opts.worldSize ?? GRID_SIZE;
+  const heightScale = opts.heightScale ?? 1;
+  const positions = new Float32Array(res * res * 3);
+  const indices: number[] = [];
+  const step = worldSize / (res - 1);
+
+  for (let i = 0; i < res; i++) {
+    for (let j = 0; j < res; j++) {
+      const x = -worldSize / 2 + i * step;
+      const z = -worldSize / 2 + j * step;
+      const y = field.sample(x, 0, z) * heightScale;
+      const p = (i * res + j) * 3;
       positions[p] = x;
       positions[p + 1] = y;
       positions[p + 2] = z;
 
-      if (i < size - 1 && j < size - 1) {
-        const a = i * size + j;
-        const b = i * size + j + 1;
-        const c = (i + 1) * size + j;
-        const d = (i + 1) * size + j + 1;
+      if (i < res - 1 && j < res - 1) {
+        const a = i * res + j;
+        const b = i * res + j + 1;
+        const c = (i + 1) * res + j;
+        const d = (i + 1) * res + j + 1;
         indices.push(a, b, d, a, d, c);
       }
     }

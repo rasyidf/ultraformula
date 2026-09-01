@@ -7,13 +7,23 @@ import type { Field, NodeDefinition, PortValue } from "../types";
  * become node params; it outputs a `field` (backed by `formula.calculate`), or a
  * `tilegrid` when the formula implements `createTileGrid` (WFC).
  */
+export interface GeneratorOptions {
+  /**
+   * True for x/z scalar fields (Perlin, Worley): skip the formula's own flat
+   * `createGeometry` and let the Output grid-sample with vertical exaggeration.
+   */
+  terrainLike?: boolean;
+}
+
 export function formulaAsGeneratorNode(
   key: string,
   formula: Formula,
+  opts: GeneratorOptions = {},
 ): NodeDefinition {
   const meta = formula.metadata;
   const hasTileGrid = typeof formula.createTileGrid === "function";
   const is3d = meta.supportedDimensions.includes("3d");
+  const useOwnGeometry = !opts.terrainLike && typeof formula.createGeometry === "function";
 
   return {
     type: `gen:${key}`,
@@ -36,7 +46,7 @@ export function formulaAsGeneratorNode(
         sample: (x, y, z) =>
           formula.calculate({ phi: params.phi ?? 0, ...params, x, y, z }),
         dimensionHint: is3d ? "3d" : "2d",
-        makeGeometry: formula.createGeometry
+        makeGeometry: useOwnGeometry
           ? () => geometryDataFromBufferGeometry(formula.createGeometry!(params))
           : undefined,
         makePlot: formula.createPlotData

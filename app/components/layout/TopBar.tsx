@@ -1,10 +1,25 @@
-import { Download, Hexagon, RotateCcw, Upload } from "lucide-react";
+import {
+  Download,
+  Hexagon,
+  RotateCcw,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { ThemeToggle } from "~/components/theme/ThemeToggle";
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import type { RFEdge, RFNode } from "~/lib/pipeline/graphHelpers";
+import { pipelineSamples } from "~/lib/pipeline/samples";
 import { usePipelineStore } from "~/stores/pipelineStore";
 import { useUiStore } from "~/stores/uiStore";
 
@@ -61,6 +76,34 @@ export function TopBar() {
         />
       </div>
       <div className="flex items-center gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Samples
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Load a sample pipeline</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {pipelineSamples.map((sample) => (
+              <DropdownMenuItem
+                key={sample.id}
+                onSelect={() => {
+                  const { nodes: n, edges: ed } = sample.build();
+                  setGraph(n, ed);
+                  setUi({ projectName: sample.name });
+                  toast.success(`Loaded "${sample.name}"`);
+                }}
+                className="flex flex-col items-start gap-0.5"
+              >
+                <span className="text-xs font-medium">{sample.name}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {sample.description}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <input
           ref={fileRef}
           type="file"
