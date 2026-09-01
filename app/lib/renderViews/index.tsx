@@ -1,6 +1,8 @@
-import { Cuboid, LineChart, Grid2x2 } from "lucide-react";
+import { Cuboid, Grid2x2, Image, LineChart, Table2 } from "lucide-react";
+import { Data2DView } from "~/components/renderViews/Data2DView";
 import { Mesh3DView } from "~/components/renderViews/Mesh3DView";
 import { Plot2DView } from "~/components/renderViews/Plot2DView";
+import { Texture2DView } from "~/components/renderViews/Texture2DView";
 import { TileGrid2DView } from "~/components/renderViews/TileGrid2DView";
 import type { Formula } from "~/types/Formula";
 import type { RenderView } from "~/types/RenderView";
@@ -27,6 +29,15 @@ export const renderViewRegistry: RenderView[] = [
     Component: Mesh3DView,
   },
   {
+    id: "texture2d",
+    label: "Texture",
+    dimension: "2d",
+    icon: Image,
+    supports: (f) =>
+      declaredViews(f).includes("texture2d") && typeof f.createTexture === "function",
+    Component: Texture2DView,
+  },
+  {
     id: "plot2d",
     label: "2D Plot",
     dimension: "2d",
@@ -41,6 +52,14 @@ export const renderViewRegistry: RenderView[] = [
     icon: Grid2x2,
     supports: (f) => declaredViews(f).includes("tileGrid2d") && typeof f.createTileGrid === "function",
     Component: TileGrid2DView,
+  },
+  {
+    id: "data2d",
+    label: "Data",
+    dimension: "2d",
+    icon: Table2,
+    supports: (f) => declaredViews(f).includes("data2d"),
+    Component: Data2DView,
   },
 ];
 

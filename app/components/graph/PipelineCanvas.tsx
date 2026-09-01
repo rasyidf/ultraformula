@@ -97,7 +97,7 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
       const out = sdef.outputs.find((p) => p.id === edge.sourceHandle);
       if (!out) return false;
       if (isParamHandle(edge.targetHandle)) return out.type === "number";
-      if (tdef.type === "output") return out.type !== "number";
+      if (tdef.type === "output") return true;
       const inp = tdef.inputs.find((p) => p.id === edge.targetHandle);
       return !!inp && out.type === inp.type;
     },

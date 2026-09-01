@@ -318,8 +318,7 @@ export const pipelineSamples: PipelineSample[] = [
       const thermal = g.add("thermalErosion", 0, 0, {
         heightScale: 13, resolution: 128, iterations: 50, talus: 0.4, strength: 0.55,
       });
-      const mesh = g.add("meshify", 0, 0, { colorMap: 1, waterLevel: 0.15 });
-      const o = g.add("output", 0, 0, { colorMap: 0 });
+      const o = g.add("output", 0, 0, { colorMap: 1, waterLevel: 0.12 });
       g.link(seed, "number", ridged, "param:seed");
       g.link(seed, "number", billow, "param:seed");
       g.link(ridged, "field", b, "a");
@@ -327,8 +326,7 @@ export const pipelineSamples: PipelineSample[] = [
       g.link(b, "out", warp, "in");
       g.link(warp, "out", terrace, "in");
       g.link(terrace, "out", thermal, "in");
-      g.link(thermal, "out", mesh, "heightmap");
-      g.link(mesh, "out", o, "in");
+      g.link(thermal, "out", o, "in");
       return g.build();
     },
   },

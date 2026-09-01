@@ -38,14 +38,15 @@ export const COLOR_MAP_LABELS: Record<ColorMapId, string> = {
 
 const RAMPS: Record<Exclude<ColorMapId, "none">, Stop[]> = {
   terrain: [
-    [0.0, hexToRgb("#1d4e89")],
-    [0.08, hexToRgb("#3f83b5")],
-    [0.13, hexToRgb("#d9c89b")],
-    [0.2, hexToRgb("#7ba05b")],
-    [0.42, hexToRgb("#4e7a3a")],
-    [0.66, hexToRgb("#6b5d43")],
-    [0.84, hexToRgb("#8a8378")],
-    [0.94, hexToRgb("#cfcabf")],
+    [0.0, hexToRgb("#124f7c")],
+    [0.07, hexToRgb("#2e7fb0")],
+    [0.11, hexToRgb("#d8c37a")],
+    [0.18, hexToRgb("#63933f")],
+    [0.4, hexToRgb("#356426")],
+    [0.6, hexToRgb("#585f31")],
+    [0.75, hexToRgb("#6d4f2f")],
+    [0.88, hexToRgb("#8a7358")],
+    [0.96, hexToRgb("#cfc7ba")],
     [1.0, hexToRgb("#ffffff")],
   ],
   biome: BIOME_TILES.map(
@@ -101,27 +102,27 @@ export function sampleColorMap(id: ColorMapId, t: number): RGB {
 }
 
 /**
- * Bake per-vertex colours from vertex height. Eroded / masked heightmaps have a
- * strongly skewed height distribution (a big plateau or a big flat sea), so a
- * plain min/max normalisation collapses most of the surface onto one end of the
- * ramp. We blend a robust linear mapping (2nd..98th percentile) with a rank /
- * histogram-equalised mapping so colour is spread across the visible surface.
- * `waterLevel` (0..1) then floors the lowest fraction to a flat sea colour.
+ * Map a set of scalar values (heights / field samples) onto colour-ramp
+ * positions. Eroded / masked data has a strongly skewed distribution (a big
+ * plateau or a big flat sea), so a plain min/max normalisation collapses most
+ * of it onto one end of the ramp. We blend a robust linear mapping (2nd..98th
+ * percentile) with a rank / histogram-equalised mapping so colour spreads
+ * across the surface. `waterLevel` (0..1) floors the lowest fraction to a flat
+ * sea colour. Returns rgb triples in 0..1.
  */
-export function applyHeightColors(
-  geo: GeometryData,
+export function equalizedColors(
+  values: Float32Array | number[],
   opts: { colorMap: ColorMapId; waterLevel?: number },
-): GeometryData {
-  if (opts.colorMap === "none") return geo;
-  const pos = geo.positions;
+): Float32Array {
+  const n = values.length;
+  const out = new Float32Array(n * 3);
+  if (n === 0 || opts.colorMap === "none") {
+    out.fill(1);
+    return out;
+  }
   const water = Math.max(0, Math.min(0.95, opts.waterLevel ?? 0));
-  const n = pos.length / 3;
-  if (n === 0) return geo;
 
-  const ys = new Float64Array(n);
-  for (let k = 0; k < n; k++) ys[k] = pos[k * 3 + 1];
-  const sorted = Float64Array.from(ys).sort();
-
+  const sorted = Float64Array.from(values as ArrayLike<number>).sort();
   const pct = (f: number) =>
     sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))];
   const lo = pct(0.02);
@@ -138,17 +139,28 @@ export function applyHeightColors(
     return a / denom;
   };
 
-  const EQ = 0.55; // how much histogram-equalisation vs. robust linear
-  const colors = new Float32Array(pos.length);
+  const EQ = 0.65;
   for (let k = 0; k < n; k++) {
-    const y = ys[k];
-    const lin = Math.min(1, Math.max(0, (y - lo) / linRange));
-    let t = (1 - EQ) * lin + EQ * rankT(y);
+    const v = values[k];
+    const lin = Math.min(1, Math.max(0, (v - lo) / linRange));
+    let t = (1 - EQ) * lin + EQ * rankT(v);
     if (water > 0) t = t <= water ? 0 : (t - water) / (1 - water);
     const [r, g, b] = sampleColorMap(opts.colorMap, t);
-    colors[k * 3] = r;
-    colors[k * 3 + 1] = g;
-    colors[k * 3 + 2] = b;
+    out[k * 3] = r;
+    out[k * 3 + 1] = g;
+    out[k * 3 + 2] = b;
   }
-  return { ...geo, colors };
+  return out;
+}
+
+/** Bake per-vertex colours from vertex height. */
+export function applyHeightColors(
+  geo: GeometryData,
+  opts: { colorMap: ColorMapId; waterLevel?: number },
+): GeometryData {
+  if (opts.colorMap === "none") return geo;
+  const n = geo.positions.length / 3;
+  const ys = new Float32Array(n);
+  for (let k = 0; k < n; k++) ys[k] = geo.positions[k * 3 + 1];
+  return { ...geo, colors: equalizedColors(ys, opts) };
 }
