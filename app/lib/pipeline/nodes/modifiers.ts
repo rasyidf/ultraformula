@@ -4,6 +4,7 @@ import type { Field, NodeDefinition, PortValue } from "../types";
 import { expectField, num, select, toggle } from "./_shared";
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const softplus = (x: number) => (x > 20 ? x : Math.log1p(Math.exp(x)));
 
 export const domainWarpNode: NodeDefinition = {
   type: "domainWarp",
@@ -223,6 +224,57 @@ export const remapNode: NodeDefinition = {
         let t = (input.sample(x, y, z) - inMin) / inSpan;
         if (doClamp) t = clamp01(t);
         return outMin + t * outSpan;
+      },
+      dimensionHint: input.dimensionHint,
+    };
+    return { out: { type: "field", value: field } };
+  },
+};
+
+export const thresholdNode: NodeDefinition = {
+  type: "threshold",
+  label: "Threshold",
+  category: "Modifier",
+  description: "Cut the field at a level — flat seas, plateau caps, or a mask",
+  tags: ["threshold", "level", "sea", "water", "clip", "mask", "plateau"],
+  inputs: [{ id: "in", label: "Field", type: "field" }],
+  outputs: [{ id: "out", label: "Field", type: "field" }],
+  params: {
+    mode: select(
+      "mode",
+      [0, 1, 2, 3],
+      ["Floor (sea)", "Ceil (plateau)", "Binary mask", "Isolate band"],
+      0,
+    ),
+    level: num("level", { min: -20, max: 20, step: 0.1, default: 0 }),
+    band: num("band width", { min: 0.05, max: 10, step: 0.05, default: 1 }),
+    softness: num("softness", { min: 0, max: 5, step: 0.05, default: 0.2 }),
+  },
+  evaluate: ({ inputs, params }): Record<string, PortValue> => {
+    const input = expectField(inputs.in, "Threshold");
+    const mode = Math.round(params.mode ?? 0);
+    const level = params.level ?? 0;
+    const band = params.band ?? 1;
+    const k = params.softness ?? 0;
+    const field: Field = {
+      sample: (x, y, z) => {
+        const v = input.sample(x, y, z);
+        switch (mode) {
+          case 0: // floor: raise anything below `level` up to it (a flat sea)
+            return k <= 0
+              ? Math.max(level, v)
+              : level + k * softplus((v - level) / k);
+          case 1: // ceil: cap anything above `level`
+            return k <= 0
+              ? Math.min(level, v)
+              : level - k * softplus((level - v) / k);
+          case 2: // binary mask
+            return v >= level ? 1 : -1;
+          case 3: // isolate a band around `level`
+            return Math.abs(v - level) <= band ? 1 : -1;
+          default:
+            return v;
+        }
       },
       dimensionHint: input.dimensionHint,
     };

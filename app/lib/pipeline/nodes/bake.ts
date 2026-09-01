@@ -75,43 +75,46 @@ export const thermalErosionNode: NodeDefinition = {
   },
 };
 
-/** field | heightmap -> geometry: explicit control over the output mesh. */
-export const meshifyNode: NodeDefinition = {
-  type: "meshify",
-  label: "Meshify",
+/**
+ * field | heightmap -> geometry: build the surface mesh and paint per-vertex
+ * colours from a height ramp / biome theme. This is the "texture" stage — the
+ * Output node itself is theme-agnostic. Sea / plateau levels come from a
+ * Threshold node upstream, not from here.
+ */
+export const colorizeNode: NodeDefinition = {
+  type: "colorize",
+  label: "Colorize",
   category: "Output",
-  description: "Turn a field or heightmap into a mesh with explicit resolution",
-  tags: ["mesh", "geometry", "surface", "displace"],
+  description: "Shade a field / heightmap with a colour-ramp theme (Terrain, Biome, …)",
+  tags: ["colour", "texture", "theme", "biome", "shade", "mesh", "hypsometric"],
   inputs: [
     { id: "field", label: "Field", type: "field" },
     { id: "heightmap", label: "Heightmap", type: "heightmap" },
   ],
   outputs: [{ id: "out", label: "Geometry", type: "geometry" }],
   params: {
-    resolution: num("resolution", { min: 16, max: 220, step: 4, default: 96 }),
-    heightScale: num("height scale", { min: 0.1, max: 30, step: 0.1, default: 8 }),
-    worldSize: num("world size", { min: 10, max: 100, step: 1, default: 50 }),
     colorMap: select(
-      "colour map",
+      "theme",
       COLOR_MAP_IDS.map((_, i) => i),
       COLOR_MAP_IDS.map((id) => COLOR_MAP_LABELS[id]),
       1,
     ),
-    waterLevel: num("water level", { min: 0, max: 0.6, step: 0.02, default: 0 }),
+    resolution: num("resolution", { min: 16, max: 220, step: 4, default: 128 }),
+    heightScale: num("height scale", { min: 0.1, max: 30, step: 0.1, default: 8 }),
+    worldSize: num("world size", { min: 10, max: 100, step: 1, default: 50 }),
   },
   evaluate: ({ inputs, params }): Record<string, PortValue> => {
     const colorMap = colorMapIdFromIndex(params.colorMap ?? 0);
-    const waterLevel = params.waterLevel ?? 0;
     const hmInput = inputs.heightmap;
     let data =
       hmInput && hmInput.type === "heightmap"
         ? geometryFromHeightmap(hmInput.value)
-        : gridGeometryFromField(expectField(inputs.field, "Meshify"), {
-            resolution: Math.round(params.resolution ?? 96),
+        : gridGeometryFromField(expectField(inputs.field, "Colorize"), {
+            resolution: Math.round(params.resolution ?? 128),
             heightScale: params.heightScale ?? 8,
             worldSize: params.worldSize ?? 50,
           });
-    if (colorMap !== "none") data = applyHeightColors(data, { colorMap, waterLevel });
+    if (colorMap !== "none") data = applyHeightColors(data, { colorMap });
     return { out: { type: "geometry", value: data } };
   },
 };

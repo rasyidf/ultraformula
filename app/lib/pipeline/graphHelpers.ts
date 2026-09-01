@@ -119,17 +119,25 @@ export function edgeInsertPlan(
   return { inHandle, outHandle };
 }
 
-/** Default graph: Perlin terrain -> Output. */
+/** Default graph: Perlin terrain -> Colorize -> Output. */
 export function seedGraph(): { nodes: RFNode[]; edges: RFEdge[] } {
-  const gen = makeNode("gen:terrainGen", { x: 80, y: 120 }, "seed-generator");
-  const out = makeNode("output", { x: 460, y: 160 }, "seed-output");
+  const gen = makeNode("gen:terrainGen", { x: 40, y: 120 }, "seed-generator");
+  const col = makeNode("colorize", { x: 360, y: 120 }, "seed-colorize");
+  const out = makeNode("output", { x: 680, y: 150 }, "seed-output");
   return {
-    nodes: [gen, out],
+    nodes: [gen, col, out],
     edges: [
       {
-        id: "seed-edge",
+        id: "seed-edge-1",
         source: gen.id,
         sourceHandle: "field",
+        target: col.id,
+        targetHandle: "field",
+      },
+      {
+        id: "seed-edge-2",
+        source: col.id,
+        sourceHandle: "out",
         target: out.id,
         targetHandle: "in",
       },

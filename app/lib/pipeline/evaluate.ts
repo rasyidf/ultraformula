@@ -87,7 +87,6 @@ export function evaluateGraph(
 
   const hashes = new Map<string, string>();
   const outputs = new Map<string, Record<string, PortValue>>();
-  const resolvedParams = new Map<string, Record<string, number>>();
 
   for (const id of order) {
     const node = nodeById.get(id)!;
@@ -114,7 +113,6 @@ export function evaluateGraph(
       }
     }
     const effectiveParams = { ...node.params, ...paramOverrides };
-    resolvedParams.set(id, effectiveParams);
 
     const upstreamHashes = inEdges
       .map((e) => `${e.targetHandle}<-${hashes.get(e.source) ?? ""}:${e.sourceHandle}`)
@@ -170,10 +168,7 @@ export function evaluateGraph(
 
   let formula: Formula | null = null;
   try {
-    formula = synthesizeFormula(
-      outputValue,
-      resolvedParams.get(outputNode.id) ?? outputNode.params,
-    );
+    formula = synthesizeFormula(outputValue);
   } catch (err) {
     errors.push({
       nodeId: outputNode.id,

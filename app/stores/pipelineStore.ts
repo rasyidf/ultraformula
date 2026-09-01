@@ -206,15 +206,20 @@ export const usePipelineStore = create<PipelineState>()(
       partialize: (s) => ({ nodes: s.nodes, edges: s.edges }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PipelineState>;
-        // Backfill params/config that node definitions gained since last save.
-        const nodes = (p.nodes ?? current.nodes).map((n) => ({
-          ...n,
-          data: {
-            ...n.data,
-            params: { ...defaultParams(n.data.nodeType), ...n.data.params },
-            config: { ...defaultConfig(n.data.nodeType), ...n.data.config },
-          },
-        }));
+        // Migrate renamed node types.
+        const RENAMES: Record<string, string> = { meshify: "colorize" };
+        const nodes = (p.nodes ?? current.nodes).map((n) => {
+          const nodeType = RENAMES[n.data.nodeType] ?? n.data.nodeType;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              nodeType,
+              params: { ...defaultParams(nodeType), ...n.data.params },
+              config: { ...defaultConfig(nodeType), ...n.data.config },
+            },
+          };
+        });
         return { ...current, ...p, nodes, edges: p.edges ?? current.edges };
       },
     },

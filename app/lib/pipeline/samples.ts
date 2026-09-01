@@ -1,6 +1,7 @@
 import type { FormulaParams } from "~/types/Formula";
 import { tidyGraph } from "./autoLayout";
 import { defaultConfig, defaultParams, type RFEdge, type RFNode } from "./graphHelpers";
+import { getNodeDefinition } from "./nodes";
 
 interface Built {
   nodes: RFNode[];
@@ -14,8 +15,6 @@ class GraphBuilder {
 
   add(
     type: string,
-    x: number,
-    y: number,
     params: FormulaParams = {},
     opts: { config?: Record<string, string>; expanded?: boolean } = {},
   ): string {
@@ -23,7 +22,7 @@ class GraphBuilder {
     this.nodes.push({
       id,
       type: "pipelineNode",
-      position: { x, y },
+      position: { x: 0, y: 0 },
       data: {
         nodeType: type,
         params: { ...defaultParams(type), ...params },
@@ -44,6 +43,18 @@ class GraphBuilder {
     });
   }
 
+  /** Colorize + Output tail. `src`/`srcHandle` feed the Colorize node. */
+  finish(src: string, srcHandle: string, colorize: FormulaParams = {}) {
+    const col = this.add("colorize", { colorMap: 1, ...colorize });
+    const out = this.add("output");
+    const srcNode = this.nodes.find((n) => n.id === src)!;
+    const srcType = getNodeDefinition(srcNode.data.nodeType)?.outputs.find(
+      (p) => p.id === srcHandle,
+    )?.type;
+    this.link(src, srcHandle, col, srcType === "heightmap" ? "heightmap" : "field");
+    this.link(col, "out", out, "in");
+  }
+
   build(): Built {
     return { nodes: tidyGraph(this.nodes, this.edges), edges: this.edges };
   }
@@ -60,16 +71,15 @@ export const pipelineSamples: PipelineSample[] = [
   {
     id: "rolling-hills",
     name: "Rolling Hills",
-    description: "Perlin fBm straight to a mesh",
+    description: "Perlin fBm → Curve → Colorize",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:terrainGen", 40, 140, {
+      const p = g.add("gen:terrainGen", {
         scale: 42, octaves: 5, persistence: 0.5, lacunarity: 2, seed: 12, fbmMode: 0,
       });
-      const c = g.add("curve", 300, 140, { gain: 3 });
-      const o = g.add("output", 540, 160);
+      const c = g.add("curve", { gain: 3 });
       g.link(p, "field", c, "in");
-      g.link(c, "out", o, "in");
+      g.finish(c, "out");
       return g.build();
     },
   },
@@ -79,15 +89,14 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Ridged noise pushed sideways by a domain warp",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:terrainGen", 40, 140, {
+      const p = g.add("gen:terrainGen", {
         scale: 34, octaves: 6, persistence: 0.5, lacunarity: 2, seed: 7, fbmMode: 1,
       });
-      const w = g.add("domainWarp", 280, 140, { warpStrength: 1.6, warpScale: 0.4 });
-      const c = g.add("curve", 500, 140, { gain: 4, gamma: 1.2 });
-      const o = g.add("output", 720, 160);
+      const w = g.add("domainWarp", { warpStrength: 1.6, warpScale: 0.4 });
+      const c = g.add("curve", { gain: 4, gamma: 1.2 });
       g.link(p, "field", w, "in");
       g.link(w, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.finish(c, "out");
       return g.build();
     },
   },
@@ -97,15 +106,14 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Ridged terrain carved by a droplet erosion sim",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:terrainGen", 40, 140, {
+      const p = g.add("gen:terrainGen", {
         scale: 30, octaves: 6, persistence: 0.5, lacunarity: 2, seed: 42, fbmMode: 1,
       });
-      const e = g.add("erosion", 300, 140, {
+      const e = g.add("erosion", {
         heightScale: 14, resolution: 96, iterations: 40000,
       });
-      const o = g.add("output", 560, 160);
       g.link(p, "field", e, "in");
-      g.link(e, "out", o, "in");
+      g.finish(e, "out");
       return g.build();
     },
   },
@@ -115,15 +123,14 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Terrace a smooth field into flat plateaus",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:terrainGen", 40, 140, {
+      const p = g.add("gen:terrainGen", {
         scale: 46, octaves: 4, persistence: 0.55, lacunarity: 2, seed: 3, fbmMode: 0,
       });
-      const t = g.add("terrace", 280, 140, { steps: 7, stepScale: 0.5, sharpness: 0.8 });
-      const c = g.add("curve", 500, 140, { gain: 6 });
-      const o = g.add("output", 720, 160);
+      const t = g.add("terrace", { steps: 7, stepScale: 0.5, sharpness: 0.8 });
+      const c = g.add("curve", { gain: 6 });
       g.link(p, "field", t, "in");
       g.link(t, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.finish(c, "out");
       return g.build();
     },
   },
@@ -133,63 +140,64 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Add a low-frequency base and a high-frequency detail layer",
     build: () => {
       const g = new GraphBuilder();
-      const base = g.add("gen:terrainGen", 40, 60, {
+      const base = g.add("gen:terrainGen", {
         scale: 70, octaves: 3, persistence: 0.5, lacunarity: 2, seed: 1, fbmMode: 0,
       });
-      const detail = g.add("gen:terrainGen", 40, 260, {
+      const detail = g.add("gen:terrainGen", {
         scale: 14, octaves: 5, persistence: 0.45, lacunarity: 2.2, seed: 88, fbmMode: 0,
       });
-      const b = g.add("blend", 300, 150, { mode: 0, mix: 0.5 });
-      const c = g.add("curve", 520, 150, { gain: 3.5 });
-      const o = g.add("output", 740, 170);
+      const b = g.add("blend", { mode: 0, mix: 0.5 });
+      const c = g.add("curve", { gain: 3.5 });
       g.link(base, "field", b, "a");
       g.link(detail, "field", b, "b");
       g.link(b, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.finish(c, "out");
       return g.build();
     },
   },
   {
     id: "island",
     name: "Island",
-    description: "Multiply terrain by a radial falloff mask, add a sea",
+    description: "Terrain × radial mask, Threshold for the sea, Colorize",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:terrainGen", 40, 60, {
+      const p = g.add("gen:terrainGen", {
         scale: 26, octaves: 5, persistence: 0.5, lacunarity: 2, seed: 21, fbmMode: 0,
       });
-      const r = g.add("radialGradient", 40, 260, { radius: 20, falloff: 2.4 });
-      const b = g.add("blend", 300, 150, { mode: 1 });
-      const c = g.add("curve", 520, 150, { gain: 8 });
-      const o = g.add("output", 740, 170, { colorMap: 1, waterLevel: 0.32 });
+      const r = g.add("radialGradient", { radius: 20, falloff: 2.4 });
+      const b = g.add("blend", { mode: 1 });
+      const c = g.add("curve", { gain: 8 });
+      const sea = g.add("threshold", { mode: 0, level: -1.2, softness: 0.4 });
       g.link(p, "field", b, "a");
       g.link(r, "field", b, "b");
       g.link(b, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.link(c, "out", sea, "in");
+      g.finish(sea, "out");
       return g.build();
     },
   },
   {
     id: "biome-driven-terrain",
     name: "Biome-Driven Terrain",
-    description: "WFC biome map converted to a height field, plus noise detail",
+    description: "WFC biome map → height field + noise detail, Biome theme",
     build: () => {
       const g = new GraphBuilder();
-      const w = g.add("gen:waveFunctionCollapse", 40, 60, {
+      const w = g.add("gen:waveFunctionCollapse", {
         gridWidth: 28, gridHeight: 28, seed: 9,
       });
-      const tf = g.add("tileToField", 260, 60, { mode: 0, heightScale: 1, smooth: 1 });
-      const detail = g.add("gen:terrainGen", 40, 260, {
+      const tf = g.add("tileToField", { mode: 0, heightScale: 1, smooth: 1 });
+      const detail = g.add("gen:terrainGen", {
         scale: 9, octaves: 4, persistence: 0.5, lacunarity: 2, seed: 3, fbmMode: 0,
       });
-      const b = g.add("blend", 480, 150, { mode: 4, mix: 0.18 });
-      const c = g.add("curve", 690, 150, { gain: 8 });
-      const o = g.add("output", 900, 170, { colorMap: 2, waterLevel: 0.22 });
+      const b = g.add("blend", { mode: 4, mix: 0.18 });
+      const c = g.add("curve", { gain: 8 });
+      const sea = g.add("threshold", { mode: 0, level: -3, softness: 0.6 });
       g.link(w, "tilegrid", tf, "in");
       g.link(tf, "out", b, "a");
       g.link(detail, "field", b, "b");
       g.link(b, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.link(c, "out", sea, "in");
+      g.finish(sea, "out", { colorMap: 2 });
       return g.build();
     },
   },
@@ -199,15 +207,14 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Relax steep slopes into rounded scree",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:terrainGen", 40, 140, {
+      const p = g.add("gen:terrainGen", {
         scale: 28, octaves: 6, persistence: 0.5, lacunarity: 2, seed: 5, fbmMode: 1,
       });
-      const th = g.add("thermalErosion", 300, 140, {
+      const th = g.add("thermalErosion", {
         heightScale: 12, resolution: 128, iterations: 60, talus: 0.5, strength: 0.6,
       });
-      const o = g.add("output", 560, 160);
       g.link(p, "field", th, "in");
-      g.link(th, "out", o, "in");
+      g.finish(th, "out");
       return g.build();
     },
   },
@@ -217,28 +224,25 @@ export const pipelineSamples: PipelineSample[] = [
     description: "One Seed node drives two noise layers — bump it to re-roll both",
     build: () => {
       const g = new GraphBuilder();
-      const seed = g.add("seed", 20, 150, { seed: 1337 });
+      const seed = g.add("seed", { seed: 1337 });
       const base = g.add(
         "gen:terrainGen",
-        260, 40,
         { scale: 55, octaves: 3, persistence: 0.5, lacunarity: 2, fbmMode: 0 },
         { expanded: true },
       );
       const detail = g.add(
         "gen:terrainGen",
-        260, 300,
         { scale: 15, octaves: 5, persistence: 0.45, lacunarity: 2.2, fbmMode: 1 },
         { expanded: true },
       );
-      const b = g.add("blend", 560, 160, { mode: 0, mix: 0.5 });
-      const c = g.add("curve", 760, 160, { gain: 3.5 });
-      const o = g.add("output", 960, 180);
+      const b = g.add("blend", { mode: 0, mix: 0.5 });
+      const c = g.add("curve", { gain: 3.5 });
       g.link(seed, "number", base, "param:seed");
       g.link(seed, "number", detail, "param:seed");
       g.link(base, "field", b, "a");
       g.link(detail, "field", b, "b");
       g.link(b, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.finish(c, "out");
       return g.build();
     },
   },
@@ -248,45 +252,45 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Worley cellular noise distorted by a domain warp",
     build: () => {
       const g = new GraphBuilder();
-      const p = g.add("gen:cellularNoise", 40, 140, {
+      const p = g.add("gen:cellularNoise", {
         scale: 18, octaves: 2, persistence: 0.5, lacunarity: 2, seed: 15,
       });
-      const w = g.add("domainWarp", 280, 140, { warpStrength: 1.1, warpScale: 0.6 });
-      const c = g.add("curve", 500, 140, { gain: 3 });
-      const o = g.add("output", 720, 160);
+      const w = g.add("domainWarp", { warpStrength: 1.1, warpScale: 0.6 });
+      const c = g.add("curve", { gain: 3 });
       g.link(p, "field", w, "in");
       g.link(w, "out", c, "in");
-      g.link(c, "out", o, "in");
+      g.finish(c, "out", { colorMap: 4 });
       return g.build();
     },
   },
   {
     id: "eroded-archipelago",
     name: "Eroded Archipelago",
-    description: "Two noise layers masked by a radial falloff, then droplet erosion",
+    description: "Noise layers, radial mask, sea Threshold, then droplet erosion",
     build: () => {
       const g = new GraphBuilder();
-      const base = g.add("gen:terrainGen", 0, 0, {
+      const base = g.add("gen:terrainGen", {
         scale: 34, octaves: 5, persistence: 0.5, lacunarity: 2, seed: 11, fbmMode: 0,
       });
-      const detail = g.add("gen:terrainGen", 0, 0, {
+      const detail = g.add("gen:terrainGen", {
         scale: 12, octaves: 5, persistence: 0.45, lacunarity: 2.1, seed: 60, fbmMode: 0,
       });
-      const radial = g.add("radialGradient", 0, 0, { radius: 22, falloff: 1.8 });
-      const combine = g.add("blend", 0, 0, { mode: 0, mix: 0.5 });
-      const mask = g.add("blend", 0, 0, { mode: 1 });
-      const c = g.add("curve", 0, 0, { gain: 7 });
-      const e = g.add("erosion", 0, 0, {
+      const radial = g.add("radialGradient", { radius: 22, falloff: 1.8 });
+      const combine = g.add("blend", { mode: 0, mix: 0.5 });
+      const mask = g.add("blend", { mode: 1 });
+      const c = g.add("curve", { gain: 7 });
+      const sea = g.add("threshold", { mode: 0, level: -1.5, softness: 0.5 });
+      const e = g.add("erosion", {
         heightScale: 12, resolution: 96, iterations: 45000,
       });
-      const o = g.add("output", 0, 0, { colorMap: 1, waterLevel: 0.34 });
       g.link(base, "field", combine, "a");
       g.link(detail, "field", combine, "b");
       g.link(combine, "out", mask, "a");
       g.link(radial, "field", mask, "b");
       g.link(mask, "out", c, "in");
-      g.link(c, "out", e, "in");
-      g.link(e, "out", o, "in");
+      g.link(c, "out", sea, "in");
+      g.link(sea, "out", e, "in");
+      g.finish(e, "out");
       return g.build();
     },
   },
@@ -294,31 +298,26 @@ export const pipelineSamples: PipelineSample[] = [
     id: "canyonlands",
     name: "Canyonlands",
     description:
-      "Seed-driven ridged + billowed noise, warped, terraced, then thermal + mesh",
+      "Seed-driven ridged + billowed noise → warp → terrace → thermal erosion",
     build: () => {
       const g = new GraphBuilder();
-      const seed = g.add("seed", 0, 0, { seed: 808 });
+      const seed = g.add("seed", { seed: 808 });
       const ridged = g.add(
         "gen:terrainGen",
-        0, 0,
         { scale: 26, octaves: 6, persistence: 0.5, lacunarity: 2, fbmMode: 1 },
         { expanded: true },
       );
       const billow = g.add(
         "gen:terrainGen",
-        0, 0,
         { scale: 40, octaves: 4, persistence: 0.5, lacunarity: 2, fbmMode: 2 },
         { expanded: true },
       );
-      const b = g.add("blend", 0, 0, { mode: 3 });
-      const warp = g.add("domainWarp", 0, 0, { warpStrength: 1.3, warpScale: 0.35 });
-      const terrace = g.add("terrace", 0, 0, {
-        steps: 9, stepScale: 0.4, sharpness: 0.85,
-      });
-      const thermal = g.add("thermalErosion", 0, 0, {
+      const b = g.add("blend", { mode: 3 });
+      const warp = g.add("domainWarp", { warpStrength: 1.3, warpScale: 0.35 });
+      const terrace = g.add("terrace", { steps: 9, stepScale: 0.4, sharpness: 0.85 });
+      const thermal = g.add("thermalErosion", {
         heightScale: 13, resolution: 128, iterations: 50, talus: 0.4, strength: 0.55,
       });
-      const o = g.add("output", 0, 0, { colorMap: 1, waterLevel: 0.12 });
       g.link(seed, "number", ridged, "param:seed");
       g.link(seed, "number", billow, "param:seed");
       g.link(ridged, "field", b, "a");
@@ -326,7 +325,7 @@ export const pipelineSamples: PipelineSample[] = [
       g.link(b, "out", warp, "in");
       g.link(warp, "out", terrace, "in");
       g.link(terrace, "out", thermal, "in");
-      g.link(thermal, "out", o, "in");
+      g.finish(thermal, "out");
       return g.build();
     },
   },
@@ -336,10 +335,10 @@ export const pipelineSamples: PipelineSample[] = [
     description: "Wave Function Collapse over the terrain-ramp tileset",
     build: () => {
       const g = new GraphBuilder();
-      const w = g.add("gen:waveFunctionCollapse", 60, 140, {
+      const w = g.add("gen:waveFunctionCollapse", {
         gridWidth: 40, gridHeight: 40, seed: 7,
       });
-      const o = g.add("output", 340, 160);
+      const o = g.add("output");
       g.link(w, "tilegrid", o, "in");
       return g.build();
     },
@@ -352,13 +351,12 @@ export const pipelineSamples: PipelineSample[] = [
       const g = new GraphBuilder();
       const x = g.add(
         "expression",
-        60,
-        140,
         { amplitude: 3 },
         { config: { expr: "= sin(sqrt(x*x + z*z) * 0.6) * 3 + cos(x * 0.2) * 1.5" } },
       );
-      const o = g.add("output", 340, 160);
-      g.link(x, "field", o, "in");
+      const c = g.add("curve", { gain: 1 });
+      g.link(x, "field", c, "in");
+      g.finish(c, "out", { colorMap: 4 });
       return g.build();
     },
   },

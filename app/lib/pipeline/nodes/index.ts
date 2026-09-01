@@ -1,6 +1,6 @@
 import { formulaRegistry } from "~/lib/formulas";
 import type { NodeDefinition } from "../types";
-import { materializeNode, meshifyNode, thermalErosionNode } from "./bake";
+import { colorizeNode, materializeNode, thermalErosionNode } from "./bake";
 import { erosionNode } from "./erosion";
 import { expressionNode } from "./expression";
 import { formulaAsGeneratorNode } from "./generator";
@@ -19,6 +19,7 @@ import {
   maskNode,
   remapNode,
   terraceNode,
+  thresholdNode,
   transformNode,
 } from "./modifiers";
 import { outputNode } from "./output";
@@ -62,6 +63,7 @@ register(transformNode);
 register(curveNode);
 register(remapNode);
 register(terraceNode);
+register(thresholdNode);
 register(blurNode);
 
 // Tiles / constraint
@@ -73,7 +75,7 @@ register(thermalErosionNode);
 register(materializeNode);
 
 // Output
-register(meshifyNode);
+register(colorizeNode);
 register(outputNode);
 
 export function getNodeDefinition(type: string): NodeDefinition | undefined {

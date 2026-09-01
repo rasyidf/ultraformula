@@ -1,28 +1,19 @@
-import { COLOR_MAP_IDS, COLOR_MAP_LABELS } from "../colorMaps";
 import type { NodeDefinition, PortValue } from "../types";
-import { num, select } from "./_shared";
 
 /**
  * Terminal node. Its upstream value is wrapped into a synthetic Formula by
- * `evaluateGraph` (see synthesizeFormula.ts). `colorMap` / `waterLevel` bake
- * per-vertex colours onto the output mesh so terrain reads as terrain.
+ * `evaluateGraph` (see synthesizeFormula.ts) and shown in the viewport. It is
+ * theme-agnostic: colour comes from a Colorize node, levels from a Threshold
+ * node upstream.
  */
 export const outputNode: NodeDefinition = {
   type: "output",
   label: "Output",
   category: "Output",
-  description: "Render the incoming field, heightmap, tile grid or geometry",
+  description: "Render the incoming field, heightmap, tile grid, geometry or value",
   inputs: [{ id: "in", label: "Result", type: "field" }],
   outputs: [],
-  params: {
-    colorMap: select(
-      "colour map",
-      COLOR_MAP_IDS.map((_, i) => i),
-      COLOR_MAP_IDS.map((id) => COLOR_MAP_LABELS[id]),
-      1,
-    ),
-    waterLevel: num("water level", { min: 0, max: 0.6, step: 0.02, default: 0 }),
-  },
+  params: {},
   evaluate: ({ inputs }): Record<string, PortValue> => {
     return inputs.in ? { in: inputs.in } : {};
   },

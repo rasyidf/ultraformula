@@ -1,9 +1,5 @@
 import type { Formula, FormulaParams } from "~/types/Formula";
-import {
-  applyHeightColors,
-  colorMapIdFromIndex,
-  equalizedColors,
-} from "./colorMaps";
+import { equalizedColors } from "./colorMaps";
 import { bufferGeometryFromData } from "./geometryThree";
 import {
   EROSION_WORLD_MIN,
@@ -23,40 +19,8 @@ export const FIELD_BOUNDS = {
   size: EROSION_WORLD_SIZE,
 };
 
-/** Top-down max-height raster of arbitrary geometry (for the 2D views). */
-function rasterizeGeometry(geo: GeometryData, resolution: number) {
-  const res = Math.max(2, Math.round(resolution));
-  const pos = geo.positions;
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minZ = Infinity;
-  let maxZ = -Infinity;
-  for (let i = 0; i < pos.length; i += 3) {
-    if (pos[i] < minX) minX = pos[i];
-    if (pos[i] > maxX) maxX = pos[i];
-    if (pos[i + 2] < minZ) minZ = pos[i + 2];
-    if (pos[i + 2] > maxZ) maxZ = pos[i + 2];
-  }
-  const sizeX = maxX - minX || 1;
-  const sizeZ = maxZ - minZ || 1;
-  const data = new Float32Array(res * res).fill(NaN);
-  for (let i = 0; i < pos.length; i += 3) {
-    const u = Math.round(((pos[i] - minX) / sizeX) * (res - 1));
-    const v = Math.round(((pos[i + 2] - minZ) / sizeZ) * (res - 1));
-    const idx = v * res + u;
-    if (Number.isNaN(data[idx]) || pos[i + 1] > data[idx]) data[idx] = pos[i + 1];
-  }
-  let lowest = Infinity;
-  for (const d of data) if (!Number.isNaN(d) && d < lowest) lowest = d;
-  if (!Number.isFinite(lowest)) lowest = 0;
-  for (let i = 0; i < data.length; i++) if (Number.isNaN(data[i])) data[i] = lowest;
-  return {
-    width: res,
-    height: res,
-    data,
-    bounds: { minX, minZ, size: Math.max(sizeX, sizeZ) },
-  };
-}
+/** Neutral map for raw (un-colorized) field / heightmap previews. */
+const RAW_TEXTURE_MAP = "viridis" as const;
 
 function fieldGrid(
   sample: (x: number, y: number, z: number) => number,
@@ -75,59 +39,90 @@ function fieldGrid(
   return { width: res, height: res, data, bounds };
 }
 
+/** Top-down max-height raster of arbitrary geometry (carries vertex colour). */
+function rasterizeGeometry(geo: GeometryData, resolution: number) {
+  const res = Math.max(2, Math.round(resolution));
+  const pos = geo.positions;
+  const col = geo.colors;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  let lowestY = Infinity;
+  let lowestColor: [number, number, number] = [0.5, 0.5, 0.5];
+  for (let i = 0; i < pos.length; i += 3) {
+    if (pos[i] < minX) minX = pos[i];
+    if (pos[i] > maxX) maxX = pos[i];
+    if (pos[i + 2] < minZ) minZ = pos[i + 2];
+    if (pos[i + 2] > maxZ) maxZ = pos[i + 2];
+    if (pos[i + 1] < lowestY) {
+      lowestY = pos[i + 1];
+      if (col) lowestColor = [col[i], col[i + 1], col[i + 2]];
+    }
+  }
+  const sizeX = maxX - minX || 1;
+  const sizeZ = maxZ - minZ || 1;
+  const data = new Float32Array(res * res).fill(NaN);
+  const colors = col ? new Float32Array(res * res * 3) : undefined;
+  for (let i = 0; i < pos.length; i += 3) {
+    const u = Math.round(((pos[i] - minX) / sizeX) * (res - 1));
+    const v = Math.round(((pos[i + 2] - minZ) / sizeZ) * (res - 1));
+    const idx = v * res + u;
+    if (Number.isNaN(data[idx]) || pos[i + 1] > data[idx]) {
+      data[idx] = pos[i + 1];
+      if (colors && col) {
+        colors[idx * 3] = col[i];
+        colors[idx * 3 + 1] = col[i + 1];
+        colors[idx * 3 + 2] = col[i + 2];
+      }
+    }
+  }
+  for (let k = 0; k < data.length; k++) {
+    if (Number.isNaN(data[k])) {
+      data[k] = Number.isFinite(lowestY) ? lowestY : 0;
+      if (colors) {
+        colors[k * 3] = lowestColor[0];
+        colors[k * 3 + 1] = lowestColor[1];
+        colors[k * 3 + 2] = lowestColor[2];
+      }
+    }
+  }
+  return {
+    width: res,
+    height: res,
+    data,
+    colors,
+    bounds: { minX, minZ, size: Math.max(sizeX, sizeZ) },
+  };
+}
+
 /**
  * Wrap the OutputNode's upstream value in a Formula-shaped object that flows
- * unchanged into FormulaCanvasWrapper + the render-view registry.
+ * unchanged into FormulaCanvasWrapper + the render-view registry. Colour is
+ * carried in from a Colorize node — Output is theme-agnostic.
  */
-export function synthesizeFormula(
-  value: PortValue,
-  outParams: FormulaParams = {},
-): Formula {
-  const colorMap = colorMapIdFromIndex(outParams.colorMap ?? 0);
-  const waterLevel = outParams.waterLevel ?? 0;
-  const textureMap = colorMap === "none" ? "grayscale" : colorMap;
-
-  const shade = (geo: GeometryData): GeometryData => {
-    if (geo.colors || colorMap === "none") return geo;
-    return applyHeightColors(geo, { colorMap, waterLevel });
-  };
-
-  const makeTexture = (
-    sample: (x: number, y: number, z: number) => number,
-    bounds: { minX: number; minZ: number; size: number },
-  ) => (resolution: number) => {
-    const grid = fieldGrid(sample, bounds, resolution);
-    return {
-      width: grid.width,
-      height: grid.height,
-      rgb: equalizedColors(grid.data, { colorMap: textureMap, waterLevel }),
-    };
-  };
-
+export function synthesizeFormula(value: PortValue): Formula {
   switch (value.type) {
     case "field": {
       const field = value.value;
       const is3d = field.dimensionHint === "3d";
       const geometryData: GeometryData | null = is3d
-        ? shade(
-            field.makeGeometry
-              ? field.makeGeometry()
-              : gridGeometryFromField(field, { resolution: 72, heightScale: 6 }),
-          )
+        ? field.makeGeometry
+          ? field.makeGeometry()
+          : gridGeometryFromField(field, { resolution: 72, heightScale: 6 })
         : null;
-      const renderViews = [
-        ...(is3d ? ["mesh3d"] : []),
-        "texture2d",
-        "plot2d",
-        "data2d",
-      ];
       return {
         metadata: {
           name: "Pipeline Output",
           description: "Field produced by the node graph",
           parameters: {},
           supportedDimensions: is3d ? ["3d"] : ["2d"],
-          renderViews,
+          renderViews: [
+            ...(is3d ? ["mesh3d"] : []),
+            "texture2d",
+            "plot2d",
+            "data2d",
+          ],
           supportsVertexColors: !!geometryData?.colors,
         },
         calculate: (p: FormulaParams) => field.sample(p.x ?? 0, p.y ?? 0, p.z ?? 0),
@@ -137,13 +132,20 @@ export function synthesizeFormula(
         createPlotData: (_p, res) =>
           field.makePlot ? field.makePlot(res) : plotFromField(field, res),
         createFieldGrid: (res) => fieldGrid(field.sample, FIELD_BOUNDS, res),
-        createTexture: makeTexture(field.sample, FIELD_BOUNDS),
+        createTexture: (res) => {
+          const g = fieldGrid(field.sample, FIELD_BOUNDS, res);
+          return {
+            width: g.width,
+            height: g.height,
+            rgb: equalizedColors(g.data, { colorMap: RAW_TEXTURE_MAP }),
+          };
+        },
       };
     }
 
     case "heightmap": {
       const hm = value.value as Heightmap;
-      const geometryData = shade(geometryFromHeightmap(hm));
+      const geometryData = geometryFromHeightmap(hm);
       const sampleHm = (x: number, _y: number, z: number) => {
         const u = ((x - hm.bounds.minX) / hm.bounds.size) * (hm.width - 1);
         const v = ((z - hm.bounds.minZ) / hm.bounds.size) * (hm.height - 1);
@@ -156,12 +158,18 @@ export function synthesizeFormula(
           parameters: {},
           supportedDimensions: ["3d"],
           renderViews: ["mesh3d", "texture2d", "data2d"],
-          supportsVertexColors: !!geometryData.colors,
         },
         calculate: (p: FormulaParams) => sampleHm(p.x ?? 0, 0, p.z ?? 0),
         createGeometry: () => bufferGeometryFromData(geometryData),
         createFieldGrid: (res) => fieldGrid(sampleHm, hm.bounds, res),
-        createTexture: makeTexture(sampleHm, hm.bounds),
+        createTexture: (res) => {
+          const g = fieldGrid(sampleHm, hm.bounds, res);
+          return {
+            width: g.width,
+            height: g.height,
+            rgb: equalizedColors(g.data, { colorMap: RAW_TEXTURE_MAP }),
+          };
+        },
       };
     }
 
@@ -181,7 +189,7 @@ export function synthesizeFormula(
     }
 
     case "geometry": {
-      const geometryData = shade(value.value);
+      const geometryData = value.value;
       const raster = rasterizeGeometry(geometryData, 128);
       const sampleRaster = (x: number, _y: number, z: number) => {
         const u = ((x - raster.bounds.minX) / raster.bounds.size) * (raster.width - 1);
@@ -199,11 +207,15 @@ export function synthesizeFormula(
         },
         calculate: (p: FormulaParams) => sampleRaster(p.x ?? 0, 0, p.z ?? 0),
         createGeometry: () => bufferGeometryFromData(geometryData),
-        createFieldGrid: (res) => {
+        createFieldGrid: (res) => rasterizeGeometry(geometryData, res),
+        createTexture: (res) => {
           const g = rasterizeGeometry(geometryData, res);
-          return { ...g, data: g.data };
+          return {
+            width: g.width,
+            height: g.height,
+            rgb: g.colors ?? equalizedColors(g.data, { colorMap: RAW_TEXTURE_MAP }),
+          };
         },
-        createTexture: makeTexture(sampleRaster, raster.bounds),
       };
     }
 
