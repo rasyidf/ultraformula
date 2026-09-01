@@ -1,16 +1,16 @@
-import { useSuperformulaContext } from "~/contexts/FormulaContext";
+import { useSceneStore } from "~/stores/sceneStore";
 import type { RenderViewProps } from "~/types/RenderView";
 import { TileGridCanvas } from "./TileGridCanvas";
 
 export function TileGrid2DView({ formula, params }: RenderViewProps) {
-  const { canvasSettings } = useSuperformulaContext();
+  const s = useSceneStore();
 
   return (
     <TileGridCanvas
       formula={formula}
       params={params}
-      backgroundColor={canvasSettings.backgroundColor}
-      showGrid={canvasSettings.showGrid}
+      backgroundColor={s.backgroundColor}
+      showGrid={s.showGrid}
     />
   );
 }

@@ -1,31 +1,36 @@
 import { useEffect } from "react";
-import { useSuperformulaContext } from "~/contexts/FormulaContext";
-import { getFormula } from "~/lib/formulas";
-import { Card, CardContent } from "~/components/ui/card";
+import { resolveActiveView } from "~/lib/renderViews";
+import type { Formula } from "~/types/Formula";
+import { useSceneStore } from "~/stores/sceneStore";
 
-export function FormulaCanvasWrapper() {
-  const { formulaState, canvasSettings, activeView, setActiveViewId } = useSuperformulaContext();
+const EMPTY_PARAMS = {} as const;
 
-  const formula = getFormula(formulaState.formulaType);
+interface Props {
+  formula: Formula | null;
+  message?: string | null;
+}
 
-  // Keep the stored id in sync when the resolver had to fall back (e.g. after
-  // switching to a formula that doesn't support the previously-active view).
+/** Dispatches the synthetic pipeline Formula to the active render view. */
+export function FormulaCanvasWrapper({ formula, message }: Props) {
+  const activeViewId = useSceneStore((s) => s.activeViewId);
+  const setScene = useSceneStore((s) => s.set);
+
+  const activeView = formula ? resolveActiveView(formula, activeViewId) : null;
+
   useEffect(() => {
-    if (activeView && activeView.id !== canvasSettings.activeViewId) {
-      setActiveViewId(activeView.id);
+    if (activeView && activeView.id !== activeViewId) {
+      setScene({ activeViewId: activeView.id });
     }
-  }, [activeView, canvasSettings.activeViewId, setActiveViewId]);
+  }, [activeView, activeViewId, setScene]);
 
-  if (!activeView) {
+  if (!formula || !activeView) {
     return (
-      <Card className="w-full h-[500px] lg:h-[calc(100vh-12rem)]">
-        <CardContent className="flex h-full items-center justify-center p-0 text-sm text-muted-foreground">
-          This formula has no available render view.
-        </CardContent>
-      </Card>
+      <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+        {message ?? "Connect a node to the Output to see a render."}
+      </div>
     );
   }
 
   const { Component } = activeView;
-  return <Component formula={formula} params={formulaState.params} />;
+  return <Component formula={formula} params={EMPTY_PARAMS} />;
 }

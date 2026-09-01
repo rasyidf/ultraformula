@@ -202,7 +202,7 @@ export function Cartesian2DCanvas({
   };
 
   return (
-    <Card className="w-full h-[500px] lg:h-[calc(100vh-12rem)]" style={{ backgroundColor }} ref={containerRef}>
+    <Card className="w-full h-full border-0 rounded-none py-0" style={{ backgroundColor }} ref={containerRef}>
       <CardContent className="p-0 h-full">
         <canvas
           ref={canvasRef}

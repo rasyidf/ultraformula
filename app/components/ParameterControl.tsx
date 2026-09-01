@@ -11,16 +11,16 @@ interface ParameterControlProps {
   paramKey: string;
   metadata: ParameterMetadata;
   value: number;
-  isLocked: boolean;
+  isLocked?: boolean;
   onChange: (value: number) => void;
-  onToggleLock: () => void;
+  onToggleLock?: () => void;
 }
 
 export const ParameterControl: React.FC<ParameterControlProps> = ({
   paramKey,
   metadata,
   value,
-  isLocked,
+  isLocked = false,
   onChange,
   onToggleLock
 }) => {
@@ -101,9 +101,11 @@ export const ParameterControl: React.FC<ParameterControlProps> = ({
                 ? (metadata.choiceLabels?.[metadata.choices?.indexOf(Number(safeValue)) ?? -1] ?? safeValue)
                 : safeValue.toFixed(2)}
           </span>
-          <Button variant="ghost" size="icon" onClick={onToggleLock}>
-            {isLocked ? <LockIcon /> : <LockOpenIcon />}
-          </Button>
+          {onToggleLock && (
+            <Button variant="ghost" size="icon" onClick={onToggleLock}>
+              {isLocked ? <LockIcon /> : <LockOpenIcon />}
+            </Button>
+          )}
         </div>
       </div>
       {controlElement}

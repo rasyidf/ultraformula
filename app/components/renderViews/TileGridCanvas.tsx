@@ -88,7 +88,7 @@ export function TileGridCanvas({
 
   return (
     <Card
-      className="w-full h-[500px] lg:h-[calc(100vh-12rem)]"
+      className="w-full h-full border-0 rounded-none py-0"
       style={{ backgroundColor }}
       ref={containerRef}
     >

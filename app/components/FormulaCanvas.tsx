@@ -58,9 +58,9 @@ export function FormulaCanvas({
   enableVertexColors = true // Default to true
 }: FormulaCanvasProps) {
   return (
-    <Card className="w-full h-[500px] lg:h-[calc(100vh-12rem)]" style={{ backgroundColor }}>
+    <Card className="w-full h-full border-0 rounded-none py-0" style={{ backgroundColor }}>
       <CardContent className="p-0 h-full" >
-        <Canvas camera={{ position: cameraPosition }}>
+        <Canvas camera={{ position: cameraPosition }} gl={{ preserveDrawingBuffer: true }}>
           <Suspense fallback={null}>
             <PerspectiveCamera makeDefault position={cameraPosition} />
             <ambientLight intensity={ambientLightIntensity} />
