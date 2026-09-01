@@ -1,4 +1,5 @@
 import type { FormulaParams } from "~/types/Formula";
+import { tidyGraph } from "./autoLayout";
 import { defaultConfig, defaultParams, type RFEdge, type RFNode } from "./graphHelpers";
 
 interface Built {
@@ -44,7 +45,7 @@ class GraphBuilder {
   }
 
   build(): Built {
-    return { nodes: this.nodes, edges: this.edges };
+    return { nodes: tidyGraph(this.nodes, this.edges), edges: this.edges };
   }
 }
 
@@ -256,6 +257,78 @@ export const pipelineSamples: PipelineSample[] = [
       g.link(p, "field", w, "in");
       g.link(w, "out", c, "in");
       g.link(c, "out", o, "in");
+      return g.build();
+    },
+  },
+  {
+    id: "eroded-archipelago",
+    name: "Eroded Archipelago",
+    description: "Two noise layers masked by a radial falloff, then droplet erosion",
+    build: () => {
+      const g = new GraphBuilder();
+      const base = g.add("gen:terrainGen", 0, 0, {
+        scale: 34, octaves: 5, persistence: 0.5, lacunarity: 2, seed: 11, fbmMode: 0,
+      });
+      const detail = g.add("gen:terrainGen", 0, 0, {
+        scale: 12, octaves: 5, persistence: 0.45, lacunarity: 2.1, seed: 60, fbmMode: 0,
+      });
+      const radial = g.add("radialGradient", 0, 0, { radius: 22, falloff: 1.8 });
+      const combine = g.add("blend", 0, 0, { mode: 0, mix: 0.5 });
+      const mask = g.add("blend", 0, 0, { mode: 1 });
+      const c = g.add("curve", 0, 0, { gain: 7 });
+      const e = g.add("erosion", 0, 0, {
+        heightScale: 12, resolution: 96, iterations: 45000,
+      });
+      const o = g.add("output", 0, 0, { colorMap: 1, waterLevel: 0.34 });
+      g.link(base, "field", combine, "a");
+      g.link(detail, "field", combine, "b");
+      g.link(combine, "out", mask, "a");
+      g.link(radial, "field", mask, "b");
+      g.link(mask, "out", c, "in");
+      g.link(c, "out", e, "in");
+      g.link(e, "out", o, "in");
+      return g.build();
+    },
+  },
+  {
+    id: "canyonlands",
+    name: "Canyonlands",
+    description:
+      "Seed-driven ridged + billowed noise, warped, terraced, then thermal + mesh",
+    build: () => {
+      const g = new GraphBuilder();
+      const seed = g.add("seed", 0, 0, { seed: 808 });
+      const ridged = g.add(
+        "gen:terrainGen",
+        0, 0,
+        { scale: 26, octaves: 6, persistence: 0.5, lacunarity: 2, fbmMode: 1 },
+        { expanded: true },
+      );
+      const billow = g.add(
+        "gen:terrainGen",
+        0, 0,
+        { scale: 40, octaves: 4, persistence: 0.5, lacunarity: 2, fbmMode: 2 },
+        { expanded: true },
+      );
+      const b = g.add("blend", 0, 0, { mode: 3 });
+      const warp = g.add("domainWarp", 0, 0, { warpStrength: 1.3, warpScale: 0.35 });
+      const terrace = g.add("terrace", 0, 0, {
+        steps: 9, stepScale: 0.4, sharpness: 0.85,
+      });
+      const thermal = g.add("thermalErosion", 0, 0, {
+        heightScale: 13, resolution: 128, iterations: 50, talus: 0.4, strength: 0.55,
+      });
+      const mesh = g.add("meshify", 0, 0, { colorMap: 1, waterLevel: 0.15 });
+      const o = g.add("output", 0, 0, { colorMap: 0 });
+      g.link(seed, "number", ridged, "param:seed");
+      g.link(seed, "number", billow, "param:seed");
+      g.link(ridged, "field", b, "a");
+      g.link(billow, "field", b, "b");
+      g.link(b, "out", warp, "in");
+      g.link(warp, "out", terrace, "in");
+      g.link(terrace, "out", thermal, "in");
+      g.link(thermal, "out", mesh, "heightmap");
+      g.link(mesh, "out", o, "in");
       return g.build();
     },
   },

@@ -119,17 +119,13 @@ export const PipelineNode = memo(function PipelineNode({
         {def.inputs.map((port) => (
           <div
             key={port.id}
-            className="relative flex items-center gap-2 px-3 py-1 text-[11px]"
+            className="relative flex items-center px-3 py-1 text-[11px]"
           >
             <Handle
               id={port.id}
               type="target"
               position={Position.Left}
               style={portHandleStyle(port.type, "left")}
-            />
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: PORT_COLORS[port.type] }}
             />
             <span className="text-muted-foreground">{port.label}</span>
           </div>
@@ -138,13 +134,9 @@ export const PipelineNode = memo(function PipelineNode({
         {def.outputs.map((port) => (
           <div
             key={port.id}
-            className="relative flex items-center justify-end gap-2 px-3 py-1 text-[11px]"
+            className="relative flex items-center justify-end px-3 py-1 text-[11px]"
           >
             <span className="font-medium">{port.label}</span>
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: PORT_COLORS[port.type] }}
-            />
             <Handle
               id={port.id}
               type="source"

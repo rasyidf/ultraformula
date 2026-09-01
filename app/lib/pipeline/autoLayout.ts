@@ -1,3 +1,7 @@
+import type { RFEdge, RFNode } from "./graphHelpers";
+import { getNodeDefinition } from "./nodes";
+import { isParamHandle, paramKeyFromHandle } from "./types";
+
 export interface LayoutNode {
   id: string;
 }
@@ -8,6 +12,47 @@ export interface LayoutEdge {
 export interface NodeSize {
   width: number;
   height: number;
+}
+
+const NODE_WIDTH = 232;
+const HEADER_H = 30;
+const ROW_H = 24;
+const PARAM_ROW_H = 23;
+
+/** Estimate a node's rendered size without measuring the DOM. */
+export function estimateNodeSize(node: RFNode, edges: RFEdge[]): NodeSize {
+  const def = getNodeDefinition(node.data.nodeType);
+  if (!def) return { width: NODE_WIDTH, height: 90 };
+
+  const linked = new Set(
+    edges
+      .filter((e) => e.target === node.id && isParamHandle(e.targetHandle))
+      .map((e) => paramKeyFromHandle(e.targetHandle as string)),
+  );
+  const paramCount = Object.keys(def.params).length;
+  const shownParams = node.data.expanded ? paramCount : linked.size;
+  const hasHiddenRow = !node.data.expanded && shownParams < paramCount;
+
+  let height = HEADER_H + 12;
+  height += (def.inputs.length + def.outputs.length) * ROW_H;
+  if (shownParams > 0 || hasHiddenRow) {
+    height += 8 + shownParams * PARAM_ROW_H + (hasHiddenRow ? 18 : 0);
+  }
+  return { width: NODE_WIDTH, height };
+}
+
+/** Re-position every node with the layered layout, using size estimates. */
+export function tidyGraph(nodes: RFNode[], edges: RFEdge[]): RFNode[] {
+  const sizes = new Map(nodes.map((n) => [n.id, estimateNodeSize(n, edges)]));
+  const positions = layoutGraph(
+    nodes.map((n) => ({ id: n.id })),
+    edges.map((e) => ({ source: e.source, target: e.target })),
+    (id) => sizes.get(id) ?? { width: NODE_WIDTH, height: 100 },
+    { originX: 40, originY: 40 },
+  );
+  return nodes.map((n) =>
+    positions.has(n.id) ? { ...n, position: positions.get(n.id)! } : n,
+  );
 }
 
 interface LayoutOpts {
