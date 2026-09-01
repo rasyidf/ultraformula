@@ -39,12 +39,13 @@ export const COLOR_MAP_LABELS: Record<ColorMapId, string> = {
 const RAMPS: Record<Exclude<ColorMapId, "none">, Stop[]> = {
   terrain: [
     [0.0, hexToRgb("#1d4e89")],
-    [0.1, hexToRgb("#4a90c2")],
-    [0.16, hexToRgb("#e3d59e")],
-    [0.32, hexToRgb("#6aa84f")],
-    [0.55, hexToRgb("#3d7a3a")],
-    [0.72, hexToRgb("#7a6a52")],
-    [0.88, hexToRgb("#8f8f8f")],
+    [0.08, hexToRgb("#3f83b5")],
+    [0.13, hexToRgb("#d9c89b")],
+    [0.2, hexToRgb("#7ba05b")],
+    [0.42, hexToRgb("#4e7a3a")],
+    [0.66, hexToRgb("#6b5d43")],
+    [0.84, hexToRgb("#8a8378")],
+    [0.94, hexToRgb("#cfcabf")],
     [1.0, hexToRgb("#ffffff")],
   ],
   biome: BIOME_TILES.map(
@@ -100,8 +101,12 @@ export function sampleColorMap(id: ColorMapId, t: number): RGB {
 }
 
 /**
- * Bake per-vertex colours from the normalised height of each vertex. `waterLevel`
- * (0..1 of the height range) floors everything below it to a flat sea colour.
+ * Bake per-vertex colours from vertex height. Eroded / masked heightmaps have a
+ * strongly skewed height distribution (a big plateau or a big flat sea), so a
+ * plain min/max normalisation collapses most of the surface onto one end of the
+ * ramp. We blend a robust linear mapping (2nd..98th percentile) with a rank /
+ * histogram-equalised mapping so colour is spread across the visible surface.
+ * `waterLevel` (0..1) then floors the lowest fraction to a flat sea colour.
  */
 export function applyHeightColors(
   geo: GeometryData,
@@ -110,23 +115,40 @@ export function applyHeightColors(
   if (opts.colorMap === "none") return geo;
   const pos = geo.positions;
   const water = Math.max(0, Math.min(0.95, opts.waterLevel ?? 0));
+  const n = pos.length / 3;
+  if (n === 0) return geo;
 
-  let min = Infinity;
-  let max = -Infinity;
-  for (let i = 1; i < pos.length; i += 3) {
-    if (pos[i] < min) min = pos[i];
-    if (pos[i] > max) max = pos[i];
-  }
-  const range = max - min || 1;
+  const ys = new Float64Array(n);
+  for (let k = 0; k < n; k++) ys[k] = pos[k * 3 + 1];
+  const sorted = Float64Array.from(ys).sort();
 
+  const pct = (f: number) =>
+    sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))];
+  const lo = pct(0.02);
+  const linRange = pct(0.98) - lo || 1;
+  const denom = sorted.length > 1 ? sorted.length - 1 : 1;
+  const rankT = (v: number) => {
+    let a = 0;
+    let b = sorted.length;
+    while (a < b) {
+      const m = (a + b) >> 1;
+      if (sorted[m] < v) a = m + 1;
+      else b = m;
+    }
+    return a / denom;
+  };
+
+  const EQ = 0.55; // how much histogram-equalisation vs. robust linear
   const colors = new Float32Array(pos.length);
-  for (let i = 0; i < pos.length; i += 3) {
-    let t = (pos[i + 1] - min) / range;
+  for (let k = 0; k < n; k++) {
+    const y = ys[k];
+    const lin = Math.min(1, Math.max(0, (y - lo) / linRange));
+    let t = (1 - EQ) * lin + EQ * rankT(y);
     if (water > 0) t = t <= water ? 0 : (t - water) / (1 - water);
     const [r, g, b] = sampleColorMap(opts.colorMap, t);
-    colors[i] = r;
-    colors[i + 1] = g;
-    colors[i + 2] = b;
+    colors[k * 3] = r;
+    colors[k * 3 + 1] = g;
+    colors[k * 3 + 2] = b;
   }
   return { ...geo, colors };
 }
