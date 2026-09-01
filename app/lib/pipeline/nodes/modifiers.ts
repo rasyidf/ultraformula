@@ -6,10 +6,15 @@ import { expectField, num, select, toggle } from "./_shared";
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const softplus = (x: number) => (x > 20 ? x : Math.log1p(Math.exp(x)));
 
+/* -------------------------------------------------------------------------- */
+/*  Distort — move the sampling domain around                                 */
+/* -------------------------------------------------------------------------- */
+
 export const domainWarpNode: NodeDefinition = {
   type: "domainWarp",
   label: "Domain Warp",
   category: "Modifier",
+  group: "Distort",
   description: "Displace sample coordinates by a Perlin warp field before reading",
   tags: ["warp", "distort", "erosion"],
   inputs: [{ id: "in", label: "Field", type: "field" }],
@@ -28,40 +33,13 @@ export const domainWarpNode: NodeDefinition = {
   },
 };
 
-export const blendNode: NodeDefinition = {
-  type: "blend",
-  label: "Blend",
-  category: "Modifier",
-  description: "Combine two fields (add / multiply / min / max / mix)",
-  tags: ["combine", "mix", "math"],
-  inputs: [
-    { id: "a", label: "A", type: "field" },
-    { id: "b", label: "B", type: "field" },
-  ],
-  outputs: [{ id: "out", label: "Field", type: "field" }],
-  params: {
-    mode: select("mode", [0, 1, 2, 3, 4], [...BLEND_MODES], 0),
-    mix: num("mix amount", { min: 0, max: 1, step: 0.01, default: 0.5 }),
-  },
-  evaluate: ({ inputs, params }) => {
-    const a = expectField(inputs.a, "Blend A");
-    const b = expectField(inputs.b, "Blend B");
-    const mode = blendModeFromIndex(params.mode ?? 0);
-    const mix = params.mix ?? 0.5;
-    const field: Field = {
-      sample: (x, y, z) => blendValues(a.sample(x, y, z), b.sample(x, y, z), mode, mix),
-      dimensionHint: a.dimensionHint === "3d" || b.dimensionHint === "3d" ? "3d" : "2d",
-    };
-    return { out: { type: "field", value: field } };
-  },
-};
-
 export const transformNode: NodeDefinition = {
   type: "transform",
   label: "Transform",
   category: "Modifier",
+  group: "Distort",
   description: "Scale / offset / rotate the sampling domain",
-  tags: ["scale", "offset", "rotate"],
+  tags: ["scale", "offset", "rotate", "pan"],
   inputs: [{ id: "in", label: "Field", type: "field" }],
   outputs: [{ id: "out", label: "Field", type: "field" }],
   params: {
@@ -90,80 +68,11 @@ export const transformNode: NodeDefinition = {
   },
 };
 
-export const maskNode: NodeDefinition = {
-  type: "mask",
-  label: "Mask",
-  category: "Modifier",
-  description: "Blend A and B by a third field used as a 0..1 mask",
-  tags: ["mask", "blend", "select", "mix"],
-  inputs: [
-    { id: "a", label: "A", type: "field" },
-    { id: "b", label: "B", type: "field" },
-    { id: "mask", label: "Mask", type: "field" },
-  ],
-  outputs: [{ id: "out", label: "Field", type: "field" }],
-  params: {
-    maskLow: num("mask low", { min: -2, max: 2, step: 0.05, default: 0 }),
-    maskHigh: num("mask high", { min: -2, max: 2, step: 0.05, default: 1 }),
-  },
-  evaluate: ({ inputs, params }): Record<string, PortValue> => {
-    const a = expectField(inputs.a, "Mask A");
-    const b = expectField(inputs.b, "Mask B");
-    const m = expectField(inputs.mask, "Mask");
-    const lo = params.maskLow ?? 0;
-    const hi = params.maskHigh ?? 1;
-    const span = hi - lo || 1;
-    const field: Field = {
-      sample: (x, y, z) => {
-        const t = clamp01((m.sample(x, y, z) - lo) / span);
-        return a.sample(x, y, z) * (1 - t) + b.sample(x, y, z) * t;
-      },
-      dimensionHint: a.dimensionHint === "3d" || b.dimensionHint === "3d" ? "3d" : "2d",
-    };
-    return { out: { type: "field", value: field } };
-  },
-};
-
-export const terraceNode: NodeDefinition = {
-  type: "terrace",
-  label: "Terrace",
-  category: "Modifier",
-  description: "Quantise values into flat steps (stratified terrain)",
-  tags: ["terrace", "step", "quantise", "strata", "plateau"],
-  inputs: [{ id: "in", label: "Field", type: "field" }],
-  outputs: [{ id: "out", label: "Field", type: "field" }],
-  params: {
-    steps: num("steps", { min: 2, max: 40, step: 1, default: 8 }),
-    stepScale: num("step scale", { min: 0.1, max: 10, step: 0.1, default: 1 }),
-    sharpness: num("sharpness", { min: 0, max: 1, step: 0.02, default: 0.7 }),
-  },
-  evaluate: ({ inputs, params }): Record<string, PortValue> => {
-    const input = expectField(inputs.in, "Terrace");
-    const steps = Math.max(2, Math.round(params.steps ?? 8));
-    const stepScale = params.stepScale || 1;
-    const sharp = clamp01(params.sharpness ?? 0.7);
-    const field: Field = {
-      sample: (x, y, z) => {
-        const v = input.sample(x, y, z) / stepScale;
-        const floor = Math.floor(v);
-        const frac = v - floor;
-        // blend between a hard step and the original ramp
-        const shaped = frac < 0.5
-          ? 0.5 * Math.pow(2 * frac, 1 + sharp * 6)
-          : 1 - 0.5 * Math.pow(2 * (1 - frac), 1 + sharp * 6);
-        const stepped = floor + (shaped * sharp + frac * (1 - sharp));
-        return stepped * stepScale;
-      },
-      dimensionHint: input.dimensionHint,
-    };
-    return { out: { type: "field", value: field } };
-  },
-};
-
 export const blurNode: NodeDefinition = {
   type: "blur",
   label: "Blur",
   category: "Modifier",
+  group: "Distort",
   description: "Box-average the input over a small kernel (softens detail)",
   tags: ["blur", "smooth", "soften", "average"],
   inputs: [{ id: "in", label: "Field", type: "field" }],
@@ -197,33 +106,82 @@ export const blurNode: NodeDefinition = {
   },
 };
 
-export const remapNode: NodeDefinition = {
-  type: "remap",
-  label: "Remap",
+/* -------------------------------------------------------------------------- */
+/*  Shape — remap the value axis                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Levels — the one value-remap node (replaces the old Curve + Remap pair).
+ * Maps the input window [inLow, inHigh] onto the output window [outLow, outHigh]
+ * with an optional midtone `gamma` and output clamp. Identity by default.
+ */
+export const levelsNode: NodeDefinition = {
+  type: "levels",
+  label: "Levels",
   category: "Modifier",
-  description: "Map an input range onto an output range",
-  tags: ["remap", "range", "normalize", "levels"],
+  group: "Shape",
+  description: "Remap the value range with input / output windows, gamma and clamp",
+  tags: ["levels", "curve", "remap", "gamma", "gain", "bias", "contrast", "clamp"],
   inputs: [{ id: "in", label: "Field", type: "field" }],
   outputs: [{ id: "out", label: "Field", type: "field" }],
   params: {
-    inMin: num("in min", { min: -10, max: 10, step: 0.05, default: -1 }),
-    inMax: num("in max", { min: -10, max: 10, step: 0.05, default: 1 }),
-    outMin: num("out min", { min: -10, max: 10, step: 0.05, default: 0 }),
-    outMax: num("out max", { min: -10, max: 10, step: 0.05, default: 1 }),
-    clampOutput: toggle("clamp", 1),
+    inLow: num("in low", { min: -20, max: 20, step: 0.05, default: -1 }),
+    inHigh: num("in high", { min: -20, max: 20, step: 0.05, default: 1 }),
+    outLow: num("out low", { min: -30, max: 30, step: 0.05, default: -1 }),
+    outHigh: num("out high", { min: -30, max: 30, step: 0.05, default: 1 }),
+    gamma: num("gamma", { min: 0.1, max: 4, step: 0.05, default: 1 }),
+    clamp: toggle("clamp output", 0),
   },
   evaluate: ({ inputs, params }): Record<string, PortValue> => {
-    const input = expectField(inputs.in, "Remap");
-    const inMin = params.inMin ?? -1;
-    const inSpan = (params.inMax ?? 1) - inMin || 1;
-    const outMin = params.outMin ?? 0;
-    const outSpan = (params.outMax ?? 1) - outMin;
-    const doClamp = !!Math.round(params.clampOutput ?? 1);
+    const input = expectField(inputs.in, "Levels");
+    const inLow = params.inLow ?? -1;
+    const inSpan = (params.inHigh ?? 1) - inLow || 1;
+    const outLow = params.outLow ?? -1;
+    const outSpan = (params.outHigh ?? 1) - outLow;
+    const gamma = params.gamma ?? 1;
+    const doClamp = !!Math.round(params.clamp ?? 0);
     const field: Field = {
       sample: (x, y, z) => {
-        let t = (input.sample(x, y, z) - inMin) / inSpan;
+        let t = (input.sample(x, y, z) - inLow) / inSpan;
         if (doClamp) t = clamp01(t);
-        return outMin + t * outSpan;
+        if (gamma !== 1) t = Math.sign(t) * Math.pow(Math.abs(t), gamma);
+        return outLow + t * outSpan;
+      },
+      dimensionHint: input.dimensionHint,
+    };
+    return { out: { type: "field", value: field } };
+  },
+};
+
+export const terraceNode: NodeDefinition = {
+  type: "terrace",
+  label: "Terrace",
+  category: "Modifier",
+  group: "Shape",
+  description: "Quantise values into flat steps (stratified terrain)",
+  tags: ["terrace", "step", "quantise", "strata", "plateau"],
+  inputs: [{ id: "in", label: "Field", type: "field" }],
+  outputs: [{ id: "out", label: "Field", type: "field" }],
+  params: {
+    steps: num("steps", { min: 2, max: 40, step: 1, default: 8 }),
+    stepScale: num("step scale", { min: 0.1, max: 10, step: 0.1, default: 1 }),
+    sharpness: num("sharpness", { min: 0, max: 1, step: 0.02, default: 0.7 }),
+  },
+  evaluate: ({ inputs, params }): Record<string, PortValue> => {
+    const input = expectField(inputs.in, "Terrace");
+    const stepScale = params.stepScale || 1;
+    const sharp = clamp01(params.sharpness ?? 0.7);
+    const field: Field = {
+      sample: (x, y, z) => {
+        const v = input.sample(x, y, z) / stepScale;
+        const floor = Math.floor(v);
+        const frac = v - floor;
+        const shaped =
+          frac < 0.5
+            ? 0.5 * Math.pow(2 * frac, 1 + sharp * 6)
+            : 1 - 0.5 * Math.pow(2 * (1 - frac), 1 + sharp * 6);
+        const stepped = floor + (shaped * sharp + frac * (1 - sharp));
+        return stepped * stepScale;
       },
       dimensionHint: input.dimensionHint,
     };
@@ -235,6 +193,7 @@ export const thresholdNode: NodeDefinition = {
   type: "threshold",
   label: "Threshold",
   category: "Modifier",
+  group: "Shape",
   description: "Cut the field at a level — flat seas, plateau caps, or a mask",
   tags: ["threshold", "level", "sea", "water", "clip", "mask", "plateau"],
   inputs: [{ id: "in", label: "Field", type: "field" }],
@@ -260,17 +219,17 @@ export const thresholdNode: NodeDefinition = {
       sample: (x, y, z) => {
         const v = input.sample(x, y, z);
         switch (mode) {
-          case 0: // floor: raise anything below `level` up to it (a flat sea)
+          case 0:
             return k <= 0
               ? Math.max(level, v)
               : level + k * softplus((v - level) / k);
-          case 1: // ceil: cap anything above `level`
+          case 1:
             return k <= 0
               ? Math.min(level, v)
               : level - k * softplus((level - v) / k);
-          case 2: // binary mask
+          case 2:
             return v >= level ? 1 : -1;
-          case 3: // isolate a band around `level`
+          case 3:
             return Math.abs(v - level) <= band ? 1 : -1;
           default:
             return v;
@@ -282,38 +241,53 @@ export const thresholdNode: NodeDefinition = {
   },
 };
 
-export const curveNode: NodeDefinition = {
-  type: "curve",
-  label: "Curve",
+/* -------------------------------------------------------------------------- */
+/*  Combine — merge two fields                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Combine — merges A and B (replaces the old Blend + Mask pair). Blends with
+ * `mode` / `mix`; if the optional `mask` input is wired, it fades per-sample
+ * from A (mask low) to the blended result (mask high).
+ */
+export const combineNode: NodeDefinition = {
+  type: "combine",
+  label: "Combine",
   category: "Modifier",
-  description: "Remap field values through gain / bias / gamma / clamp",
-  tags: ["remap", "gamma", "clamp", "levels"],
-  inputs: [{ id: "in", label: "Field", type: "field" }],
+  group: "Combine",
+  description: "Merge two fields (add / multiply / min / max / mix), optional mask",
+  tags: ["combine", "blend", "mix", "mask", "add", "multiply", "min", "max"],
+  inputs: [
+    { id: "a", label: "A", type: "field" },
+    { id: "b", label: "B", type: "field" },
+    { id: "mask", label: "Mask", type: "field" },
+  ],
   outputs: [{ id: "out", label: "Field", type: "field" }],
   params: {
-    gain: num("gain", { min: 0, max: 5, step: 0.05, default: 1 }),
-    bias: num("bias", { min: -10, max: 10, step: 0.1, default: 0 }),
-    gamma: num("gamma", { min: 0.1, max: 4, step: 0.05, default: 1 }),
-    clampEnabled: toggle("clamp", 0),
-    clampMin: num("clamp min", { min: -20, max: 20, step: 0.1, default: -1 }),
-    clampMax: num("clamp max", { min: -20, max: 20, step: 0.1, default: 1 }),
+    mode: select("mode", [0, 1, 2, 3, 4], [...BLEND_MODES], 0),
+    mix: num("mix amount", { min: 0, max: 1, step: 0.01, default: 0.5 }),
+    maskLow: num("mask low", { min: -4, max: 4, step: 0.05, default: 0 }),
+    maskHigh: num("mask high", { min: -4, max: 4, step: 0.05, default: 1 }),
   },
-  evaluate: ({ inputs, params }) => {
-    const input = expectField(inputs.in, "Curve");
-    const gain = params.gain ?? 1;
-    const bias = params.bias ?? 0;
-    const gamma = params.gamma ?? 1;
-    const clampOn = !!Math.round(params.clampEnabled ?? 0);
-    const lo = params.clampMin ?? -1;
-    const hi = params.clampMax ?? 1;
+  evaluate: ({ inputs, params }): Record<string, PortValue> => {
+    const a = expectField(inputs.a, "Combine A");
+    const b = expectField(inputs.b, "Combine B");
+    const maskInput =
+      inputs.mask && inputs.mask.type === "field" ? inputs.mask.value : null;
+    const mode = blendModeFromIndex(params.mode ?? 0);
+    const mix = params.mix ?? 0.5;
+    const lo = params.maskLow ?? 0;
+    const span = (params.maskHigh ?? 1) - lo || 1;
     const field: Field = {
       sample: (x, y, z) => {
-        let v = input.sample(x, y, z) * gain + bias;
-        if (gamma !== 1) v = Math.sign(v) * Math.pow(Math.abs(v), gamma);
-        if (clampOn) v = Math.min(hi, Math.max(lo, v));
-        return v;
+        const av = a.sample(x, y, z);
+        const blended = blendValues(av, b.sample(x, y, z), mode, mix);
+        if (!maskInput) return blended;
+        const t = clamp01((maskInput.sample(x, y, z) - lo) / span);
+        return av * (1 - t) + blended * t;
       },
-      dimensionHint: input.dimensionHint,
+      dimensionHint:
+        a.dimensionHint === "3d" || b.dimensionHint === "3d" ? "3d" : "2d",
     };
     return { out: { type: "field", value: field } };
   },

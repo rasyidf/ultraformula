@@ -43,6 +43,13 @@ class GraphBuilder {
     });
   }
 
+  /** field -> Heightmap. Returns the new node id (its "out" is a heightmap). */
+  bake(src: string, srcHandle: string, params: FormulaParams = {}): string {
+    const h = this.add("heightmap", params);
+    this.link(src, srcHandle, h, "in");
+    return h;
+  }
+
   /** Colorize + Output tail. `src`/`srcHandle` feed the Colorize node. */
   finish(src: string, srcHandle: string, colorize: FormulaParams = {}) {
     const col = this.add("colorize", { colorMap: 1, ...colorize });
@@ -53,6 +60,16 @@ class GraphBuilder {
     )?.type;
     this.link(src, srcHandle, col, srcType === "heightmap" ? "heightmap" : "field");
     this.link(col, "out", out, "in");
+  }
+
+  /** bake() then finish() — the common terrain tail. */
+  bakeAndFinish(
+    src: string,
+    srcHandle: string,
+    heightmap: FormulaParams = {},
+    colorize: FormulaParams = {},
+  ) {
+    this.finish(this.bake(src, srcHandle, heightmap), "out", colorize);
   }
 
   build(): Built {
@@ -71,15 +88,15 @@ export const pipelineSamples: PipelineSample[] = [
   {
     id: "rolling-hills",
     name: "Rolling Hills",
-    description: "Perlin fBm → Curve → Colorize",
+    description: "Perlin fBm → Levels → Heightmap → Colorize",
     build: () => {
       const g = new GraphBuilder();
       const p = g.add("gen:terrainGen", {
         scale: 42, octaves: 5, persistence: 0.5, lacunarity: 2, seed: 12, fbmMode: 0,
       });
-      const c = g.add("curve", { gain: 3 });
-      g.link(p, "field", c, "in");
-      g.finish(c, "out");
+      const lv = g.add("levels", { gamma: 1.3 });
+      g.link(p, "field", lv, "in");
+      g.bakeAndFinish(lv, "out", { heightScale: 9 });
       return g.build();
     },
   },
@@ -93,10 +110,10 @@ export const pipelineSamples: PipelineSample[] = [
         scale: 34, octaves: 6, persistence: 0.5, lacunarity: 2, seed: 7, fbmMode: 1,
       });
       const w = g.add("domainWarp", { warpStrength: 1.6, warpScale: 0.4 });
-      const c = g.add("curve", { gain: 4, gamma: 1.2 });
+      const lv = g.add("levels", { gamma: 1.2 });
       g.link(p, "field", w, "in");
-      g.link(w, "out", c, "in");
-      g.finish(c, "out");
+      g.link(w, "out", lv, "in");
+      g.bakeAndFinish(lv, "out", { heightScale: 12 });
       return g.build();
     },
   },
@@ -127,10 +144,8 @@ export const pipelineSamples: PipelineSample[] = [
         scale: 46, octaves: 4, persistence: 0.55, lacunarity: 2, seed: 3, fbmMode: 0,
       });
       const t = g.add("terrace", { steps: 7, stepScale: 0.5, sharpness: 0.8 });
-      const c = g.add("curve", { gain: 6 });
       g.link(p, "field", t, "in");
-      g.link(t, "out", c, "in");
-      g.finish(c, "out");
+      g.bakeAndFinish(t, "out", { heightScale: 12 });
       return g.build();
     },
   },
@@ -146,33 +161,31 @@ export const pipelineSamples: PipelineSample[] = [
       const detail = g.add("gen:terrainGen", {
         scale: 14, octaves: 5, persistence: 0.45, lacunarity: 2.2, seed: 88, fbmMode: 0,
       });
-      const b = g.add("blend", { mode: 0, mix: 0.5 });
-      const c = g.add("curve", { gain: 3.5 });
-      g.link(base, "field", b, "a");
-      g.link(detail, "field", b, "b");
-      g.link(b, "out", c, "in");
-      g.finish(c, "out");
+      const cb = g.add("combine", { mode: 0, mix: 0.5 });
+      const lv = g.add("levels", { gamma: 1.2 });
+      g.link(base, "field", cb, "a");
+      g.link(detail, "field", cb, "b");
+      g.link(cb, "out", lv, "in");
+      g.bakeAndFinish(lv, "out", { heightScale: 10 });
       return g.build();
     },
   },
   {
     id: "island",
     name: "Island",
-    description: "Terrain × radial mask, Threshold for the sea, Colorize",
+    description: "Terrain × radial mask, Threshold for the sea, Heightmap, Colorize",
     build: () => {
       const g = new GraphBuilder();
       const p = g.add("gen:terrainGen", {
         scale: 26, octaves: 5, persistence: 0.5, lacunarity: 2, seed: 21, fbmMode: 0,
       });
       const r = g.add("radialGradient", { radius: 20, falloff: 2.4 });
-      const b = g.add("blend", { mode: 1 });
-      const c = g.add("curve", { gain: 8 });
-      const sea = g.add("threshold", { mode: 0, level: -1.2, softness: 0.4 });
-      g.link(p, "field", b, "a");
-      g.link(r, "field", b, "b");
-      g.link(b, "out", c, "in");
-      g.link(c, "out", sea, "in");
-      g.finish(sea, "out");
+      const cb = g.add("combine", { mode: 1 });
+      const sea = g.add("threshold", { mode: 0, level: -0.15, softness: 0.08 });
+      g.link(p, "field", cb, "a");
+      g.link(r, "field", cb, "b");
+      g.link(cb, "out", sea, "in");
+      g.bakeAndFinish(sea, "out", { heightScale: 13 });
       return g.build();
     },
   },
@@ -189,15 +202,13 @@ export const pipelineSamples: PipelineSample[] = [
       const detail = g.add("gen:terrainGen", {
         scale: 9, octaves: 4, persistence: 0.5, lacunarity: 2, seed: 3, fbmMode: 0,
       });
-      const b = g.add("blend", { mode: 4, mix: 0.18 });
-      const c = g.add("curve", { gain: 8 });
-      const sea = g.add("threshold", { mode: 0, level: -3, softness: 0.6 });
+      const cb = g.add("combine", { mode: 4, mix: 0.18 });
+      const sea = g.add("threshold", { mode: 0, level: -0.4, softness: 0.15 });
       g.link(w, "tilegrid", tf, "in");
-      g.link(tf, "out", b, "a");
-      g.link(detail, "field", b, "b");
-      g.link(b, "out", c, "in");
-      g.link(c, "out", sea, "in");
-      g.finish(sea, "out", { colorMap: 2 });
+      g.link(tf, "out", cb, "a");
+      g.link(detail, "field", cb, "b");
+      g.link(cb, "out", sea, "in");
+      g.bakeAndFinish(sea, "out", { heightScale: 9 }, { colorMap: 2 });
       return g.build();
     },
   },
@@ -235,14 +246,14 @@ export const pipelineSamples: PipelineSample[] = [
         { scale: 15, octaves: 5, persistence: 0.45, lacunarity: 2.2, fbmMode: 1 },
         { expanded: true },
       );
-      const b = g.add("blend", { mode: 0, mix: 0.5 });
-      const c = g.add("curve", { gain: 3.5 });
+      const cb = g.add("combine", { mode: 0, mix: 0.5 });
+      const lv = g.add("levels", { gamma: 1.15 });
       g.link(seed, "number", base, "param:seed");
       g.link(seed, "number", detail, "param:seed");
-      g.link(base, "field", b, "a");
-      g.link(detail, "field", b, "b");
-      g.link(b, "out", c, "in");
-      g.finish(c, "out");
+      g.link(base, "field", cb, "a");
+      g.link(detail, "field", cb, "b");
+      g.link(cb, "out", lv, "in");
+      g.bakeAndFinish(lv, "out", { heightScale: 10 });
       return g.build();
     },
   },
@@ -256,10 +267,10 @@ export const pipelineSamples: PipelineSample[] = [
         scale: 18, octaves: 2, persistence: 0.5, lacunarity: 2, seed: 15,
       });
       const w = g.add("domainWarp", { warpStrength: 1.1, warpScale: 0.6 });
-      const c = g.add("curve", { gain: 3 });
+      const lv = g.add("levels", { gamma: 1.1 });
       g.link(p, "field", w, "in");
-      g.link(w, "out", c, "in");
-      g.finish(c, "out", { colorMap: 4 });
+      g.link(w, "out", lv, "in");
+      g.bakeAndFinish(lv, "out", { heightScale: 8 }, { colorMap: 4 });
       return g.build();
     },
   },
@@ -276,10 +287,9 @@ export const pipelineSamples: PipelineSample[] = [
         scale: 12, octaves: 5, persistence: 0.45, lacunarity: 2.1, seed: 60, fbmMode: 0,
       });
       const radial = g.add("radialGradient", { radius: 22, falloff: 1.8 });
-      const combine = g.add("blend", { mode: 0, mix: 0.5 });
-      const mask = g.add("blend", { mode: 1 });
-      const c = g.add("curve", { gain: 7 });
-      const sea = g.add("threshold", { mode: 0, level: -1.5, softness: 0.5 });
+      const combine = g.add("combine", { mode: 0, mix: 0.5 });
+      const mask = g.add("combine", { mode: 1 });
+      const sea = g.add("threshold", { mode: 0, level: -0.2, softness: 0.1 });
       const e = g.add("erosion", {
         heightScale: 12, resolution: 96, iterations: 45000,
       });
@@ -287,8 +297,7 @@ export const pipelineSamples: PipelineSample[] = [
       g.link(detail, "field", combine, "b");
       g.link(combine, "out", mask, "a");
       g.link(radial, "field", mask, "b");
-      g.link(mask, "out", c, "in");
-      g.link(c, "out", sea, "in");
+      g.link(mask, "out", sea, "in");
       g.link(sea, "out", e, "in");
       g.finish(e, "out");
       return g.build();
@@ -312,7 +321,7 @@ export const pipelineSamples: PipelineSample[] = [
         { scale: 40, octaves: 4, persistence: 0.5, lacunarity: 2, fbmMode: 2 },
         { expanded: true },
       );
-      const b = g.add("blend", { mode: 3 });
+      const cb = g.add("combine", { mode: 3 });
       const warp = g.add("domainWarp", { warpStrength: 1.3, warpScale: 0.35 });
       const terrace = g.add("terrace", { steps: 9, stepScale: 0.4, sharpness: 0.85 });
       const thermal = g.add("thermalErosion", {
@@ -320,9 +329,9 @@ export const pipelineSamples: PipelineSample[] = [
       });
       g.link(seed, "number", ridged, "param:seed");
       g.link(seed, "number", billow, "param:seed");
-      g.link(ridged, "field", b, "a");
-      g.link(billow, "field", b, "b");
-      g.link(b, "out", warp, "in");
+      g.link(ridged, "field", cb, "a");
+      g.link(billow, "field", cb, "b");
+      g.link(cb, "out", warp, "in");
       g.link(warp, "out", terrace, "in");
       g.link(terrace, "out", thermal, "in");
       g.finish(thermal, "out");
@@ -354,9 +363,9 @@ export const pipelineSamples: PipelineSample[] = [
         { amplitude: 3 },
         { config: { expr: "= sin(sqrt(x*x + z*z) * 0.6) * 3 + cos(x * 0.2) * 1.5" } },
       );
-      const c = g.add("curve", { gain: 1 });
-      g.link(x, "field", c, "in");
-      g.finish(c, "out", { colorMap: 4 });
+      const lv = g.add("levels", { gamma: 1 });
+      g.link(x, "field", lv, "in");
+      g.bakeAndFinish(lv, "out", { heightScale: 3 }, { colorMap: 4 });
       return g.build();
     },
   },

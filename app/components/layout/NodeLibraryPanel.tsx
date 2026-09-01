@@ -1,9 +1,9 @@
 import { GripVertical, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { CATEGORY_COLOR } from "~/components/graph/nodeTypes";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { nodeDefinitions } from "~/lib/pipeline/nodes";
+import { CATEGORY_ORDER, nodeDefinitions } from "~/lib/pipeline/nodes";
 import type { NodeCategory, NodeDefinition } from "~/lib/pipeline/types";
 import { usePipelineStore } from "~/stores/pipelineStore";
 
@@ -19,16 +19,6 @@ function getTransparentImg() {
   }
   return transparentImg;
 }
-
-const CATEGORY_ORDER: NodeCategory[] = [
-  "Input",
-  "Generator",
-  "Noise",
-  "Modifier",
-  "Simulation",
-  "Constraint",
-  "Output",
-];
 
 export function NodeLibraryPanel() {
   const [search, setSearch] = useState("");
@@ -52,7 +42,13 @@ export function NodeLibraryPanel() {
     }
     return CATEGORY_ORDER.filter((c) => map.has(c)).map((c) => ({
       category: c,
-      items: map.get(c)!.sort((a, b) => a.label.localeCompare(b.label)),
+      items: map
+        .get(c)!
+        .sort(
+          (a, b) =>
+            (a.group ?? "").localeCompare(b.group ?? "") ||
+            a.label.localeCompare(b.label),
+        ),
     }));
   }, [search]);
 
@@ -78,9 +74,14 @@ export function NodeLibraryPanel() {
                 {category}
               </div>
               <div className="space-y-1">
-                {items.map((def) => (
-                  <button
-                    key={def.type}
+                {items.map((def, i) => (
+                  <Fragment key={def.type}>
+                    {def.group && def.group !== items[i - 1]?.group && (
+                      <div className="px-1 pb-0.5 pt-1 text-[9px] font-medium uppercase tracking-wide text-muted-foreground/60">
+                        {def.group}
+                      </div>
+                    )}
+                    <button
                     type="button"
                     draggable
                     onDragStart={(e) => {
@@ -113,7 +114,8 @@ export function NodeLibraryPanel() {
                       )}
                     </span>
                     <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
-                  </button>
+                    </button>
+                  </Fragment>
                 ))}
               </div>
             </div>

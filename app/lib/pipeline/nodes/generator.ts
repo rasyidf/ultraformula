@@ -24,11 +24,13 @@ export function formulaAsGeneratorNode(
   const hasTileGrid = typeof formula.createTileGrid === "function";
   const is3d = meta.supportedDimensions.includes("3d");
   const useOwnGeometry = !opts.terrainLike && typeof formula.createGeometry === "function";
+  const isNoise = !!meta.categories?.includes("Noise");
 
   return {
     type: `gen:${key}`,
     label: meta.name,
-    category: meta.categories?.includes("Noise") ? "Noise" : "Generator",
+    category: isNoise ? "Noise" : "Generator",
+    group: isNoise ? undefined : hasTileGrid ? "Tiles" : "Parametric",
     description: meta.description,
     tags: meta.tags,
     inputs: [],

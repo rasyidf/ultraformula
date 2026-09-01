@@ -78,7 +78,6 @@ export type NodeCategory =
   | "Noise"
   | "Modifier"
   | "Simulation"
-  | "Constraint"
   | "Output";
 
 /** Prefix for a handle that drives a node parameter (e.g. "param:seed"). */
@@ -92,6 +91,8 @@ export interface NodeDefinition {
   type: string;
   label: string;
   category: NodeCategory;
+  /** Optional sub-heading inside the category in the node library. */
+  group?: string;
   description?: string;
   tags?: string[];
   inputs: PortSpec[];

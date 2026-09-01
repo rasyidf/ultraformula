@@ -20,6 +20,56 @@ import {
   type RFNode,
 } from "~/lib/pipeline/graphHelpers";
 
+/** Node types that were renamed between store versions. */
+const NODE_TYPE_RENAMES: Record<string, string> = {
+  meshify: "colorize",
+  materialize: "heightmap",
+  curve: "levels",
+  remap: "levels",
+  blend: "combine",
+  mask: "combine",
+};
+
+type Params = Record<string, number>;
+
+/** Best-effort param carry-over when a node type is merged/renamed. */
+function migrateParams(oldType: string, newType: string, params: Params): Params {
+  if (oldType === newType) return params;
+
+  if (oldType === "curve" && newType === "levels") {
+    const gain = params.gain ?? 1;
+    const bias = params.bias ?? 0;
+    return {
+      inLow: -1,
+      inHigh: 1,
+      outLow: -gain + bias,
+      outHigh: gain + bias,
+      gamma: params.gamma ?? 1,
+      clamp: params.clampEnabled ?? 0,
+    };
+  }
+  if (oldType === "remap" && newType === "levels") {
+    return {
+      inLow: params.inMin ?? -1,
+      inHigh: params.inMax ?? 1,
+      outLow: params.outMin ?? 0,
+      outHigh: params.outMax ?? 1,
+      gamma: 1,
+      clamp: params.clampOutput ?? 1,
+    };
+  }
+  if (oldType === "mask" && newType === "combine") {
+    return {
+      mode: 4, // mix
+      mix: 1,
+      maskLow: params.maskLow ?? 0,
+      maskHigh: params.maskHigh ?? 1,
+    };
+  }
+  // blend -> combine and materialize -> heightmap: param names already line up.
+  return params;
+}
+
 export interface PipelineState {
   nodes: RFNode[];
   edges: RFEdge[];
@@ -206,16 +256,16 @@ export const usePipelineStore = create<PipelineState>()(
       partialize: (s) => ({ nodes: s.nodes, edges: s.edges }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PipelineState>;
-        // Migrate renamed node types.
-        const RENAMES: Record<string, string> = { meshify: "colorize" };
         const nodes = (p.nodes ?? current.nodes).map((n) => {
-          const nodeType = RENAMES[n.data.nodeType] ?? n.data.nodeType;
+          const oldType = n.data.nodeType;
+          const nodeType = NODE_TYPE_RENAMES[oldType] ?? oldType;
+          const carried = migrateParams(oldType, nodeType, n.data.params ?? {});
           return {
             ...n,
             data: {
               ...n.data,
               nodeType,
-              params: { ...defaultParams(nodeType), ...n.data.params },
+              params: { ...defaultParams(nodeType), ...carried },
               config: { ...defaultConfig(nodeType), ...n.data.config },
             },
           };

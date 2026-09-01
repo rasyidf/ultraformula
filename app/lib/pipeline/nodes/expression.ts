@@ -9,6 +9,7 @@ export const expressionNode: NodeDefinition = {
   type: "expression",
   label: "Expression",
   category: "Generator",
+  group: "Custom",
   description: "Field defined by a math expression of x, y, z (must start with =)",
   tags: ["expression", "formula", "custom", "math"],
   inputs: [],

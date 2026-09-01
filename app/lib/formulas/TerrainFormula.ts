@@ -19,6 +19,7 @@ export class TerrainFormula extends BaseFormula {
         min: 1,
         max: 100,
         step: 1,
+        default: 45,
         isLocked: false
       },
       octaves: {
@@ -27,6 +28,7 @@ export class TerrainFormula extends BaseFormula {
         min: 1,
         max: 10,
         step: 1,
+        default: 5,
         isLocked: false
       },
       persistence: {
@@ -35,6 +37,7 @@ export class TerrainFormula extends BaseFormula {
         min: 0.1,
         max: 1,
         step: 0.1,
+        default: 0.5,
         isLocked: false
       },
       lacunarity: {
@@ -43,6 +46,7 @@ export class TerrainFormula extends BaseFormula {
         min: 1,
         max: 10,
         step: 1,
+        default: 2,
         isLocked: false
       },
       seed: {
@@ -51,6 +55,7 @@ export class TerrainFormula extends BaseFormula {
         min: 0,
         max: 1000,
         step: 1,
+        default: 7,
         isLocked: false
       },
       fbmMode: {

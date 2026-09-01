@@ -1,7 +1,5 @@
 import { formulaRegistry } from "~/lib/formulas";
-import type { NodeDefinition } from "../types";
-import { colorizeNode, materializeNode, thermalErosionNode } from "./bake";
-import { erosionNode } from "./erosion";
+import type { NodeCategory, NodeDefinition } from "../types";
 import { expressionNode } from "./expression";
 import { formulaAsGeneratorNode } from "./generator";
 import {
@@ -12,29 +10,38 @@ import {
 } from "./generators";
 import { randomNode, seedNode, valueNode } from "./inputs";
 import {
-  blendNode,
   blurNode,
-  curveNode,
+  combineNode,
   domainWarpNode,
-  maskNode,
-  remapNode,
+  levelsNode,
   terraceNode,
   thresholdNode,
   transformNode,
 } from "./modifiers";
-import { outputNode } from "./output";
+import { colorizeNode, outputNode } from "./output";
+import { erosionNode, heightmapNode, thermalErosionNode } from "./simulation";
 import { tileToFieldNode } from "./tiles";
 
 export const nodeRegistry: Record<string, NodeDefinition> = {};
 
-function register(def: NodeDefinition) {
-  nodeRegistry[def.type] = def;
+function register(...defs: NodeDefinition[]) {
+  for (const def of defs) nodeRegistry[def.type] = def;
 }
 
-// x/z scalar fields: grid-sampled with exaggeration rather than their own
-// (flat) createGeometry.
+/**
+ * x/z scalar noise fields: grid-sample them with vertical exaggeration rather
+ * than using the formula's own (flat) createGeometry.
+ */
 const TERRAIN_LIKE = new Set(["terrainGen", "cellularNoise"]);
 
+// --- Inputs: number sources that drive parameter sockets --------------------
+register(valueNode, seedNode, randomNode);
+
+// --- Generators: fields from nothing ---------------------------------------
+register(constantNode, radialGradientNode, linearGradientNode, checkerNode);
+register(expressionNode);
+
+// --- Noise / parametric generators wrapped from the Formula registry -------
 for (const [key, formula] of Object.entries(formulaRegistry)) {
   register(
     formulaAsGeneratorNode(key, formula, {
@@ -43,43 +50,30 @@ for (const [key, formula] of Object.entries(formulaRegistry)) {
   );
 }
 
-// Parameter inputs
-register(valueNode);
-register(seedNode);
-register(randomNode);
+// --- Modifiers: reshape one field -----------------------------------------
+register(domainWarpNode, transformNode, blurNode); // Distort
+register(levelsNode, terraceNode, thresholdNode); // Shape
+register(combineNode, tileToFieldNode); // Combine
 
-// Procedural generators
-register(expressionNode);
-register(constantNode);
-register(radialGradientNode);
-register(linearGradientNode);
-register(checkerNode);
+// --- Simulation: field -> heightmap --------------------------------------
+register(heightmapNode); // Bake
+register(erosionNode, thermalErosionNode); // Erosion
 
-// Modifiers
-register(domainWarpNode);
-register(blendNode);
-register(maskNode);
-register(transformNode);
-register(curveNode);
-register(remapNode);
-register(terraceNode);
-register(thresholdNode);
-register(blurNode);
-
-// Tiles / constraint
-register(tileToFieldNode);
-
-// Simulation / bake
-register(erosionNode);
-register(thermalErosionNode);
-register(materializeNode);
-
-// Output
-register(colorizeNode);
-register(outputNode);
+// --- Output: theme + terminal -------------------------------------------
+register(colorizeNode, outputNode);
 
 export function getNodeDefinition(type: string): NodeDefinition | undefined {
   return nodeRegistry[type];
 }
 
 export const nodeDefinitions = (): NodeDefinition[] => Object.values(nodeRegistry);
+
+/** Display order for the node-library panel. */
+export const CATEGORY_ORDER: NodeCategory[] = [
+  "Input",
+  "Generator",
+  "Noise",
+  "Modifier",
+  "Simulation",
+  "Output",
+];

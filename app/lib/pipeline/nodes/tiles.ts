@@ -14,7 +14,8 @@ const clamp = (v: number, lo: number, hi: number) =>
 export const tileToFieldNode: NodeDefinition = {
   type: "tileToField",
   label: "Tiles → Field",
-  category: "Constraint",
+  category: "Modifier",
+  group: "Combine",
   description: "Turn a tile grid into a height field (elevation ramp or a tile mask)",
   tags: ["wfc", "tiles", "biome", "convert", "field"],
   inputs: [{ id: "in", label: "Tiles", type: "tilegrid" }],

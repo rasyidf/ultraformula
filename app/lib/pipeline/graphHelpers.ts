@@ -119,28 +119,22 @@ export function edgeInsertPlan(
   return { inHandle, outHandle };
 }
 
-/** Default graph: Perlin terrain -> Colorize -> Output. */
+/** Default graph: Perlin terrain -> Levels -> Heightmap -> Colorize -> Output. */
 export function seedGraph(): { nodes: RFNode[]; edges: RFEdge[] } {
-  const gen = makeNode("gen:terrainGen", { x: 40, y: 120 }, "seed-generator");
-  const col = makeNode("colorize", { x: 360, y: 120 }, "seed-colorize");
-  const out = makeNode("output", { x: 680, y: 150 }, "seed-output");
+  const gen = makeNode("gen:terrainGen", { x: 40, y: 160 }, "seed-generator");
+  const lv = makeNode("levels", { x: 320, y: 160 }, "seed-levels");
+  lv.data.params.gamma = 1.3;
+  const hm = makeNode("heightmap", { x: 560, y: 160 }, "seed-heightmap");
+  hm.data.params.heightScale = 9;
+  const col = makeNode("colorize", { x: 800, y: 160 }, "seed-colorize");
+  const out = makeNode("output", { x: 1040, y: 190 }, "seed-output");
   return {
-    nodes: [gen, col, out],
+    nodes: [gen, lv, hm, col, out],
     edges: [
-      {
-        id: "seed-edge-1",
-        source: gen.id,
-        sourceHandle: "field",
-        target: col.id,
-        targetHandle: "field",
-      },
-      {
-        id: "seed-edge-2",
-        source: col.id,
-        sourceHandle: "out",
-        target: out.id,
-        targetHandle: "in",
-      },
+      { id: "seed-edge-1", source: gen.id, sourceHandle: "field", target: lv.id, targetHandle: "in" },
+      { id: "seed-edge-2", source: lv.id, sourceHandle: "out", target: hm.id, targetHandle: "in" },
+      { id: "seed-edge-3", source: hm.id, sourceHandle: "out", target: col.id, targetHandle: "heightmap" },
+      { id: "seed-edge-4", source: col.id, sourceHandle: "out", target: out.id, targetHandle: "in" },
     ],
   };
 }
