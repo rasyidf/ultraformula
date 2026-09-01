@@ -150,7 +150,7 @@ export const pipelineSamples: PipelineSample[] = [
   {
     id: "island",
     name: "Island",
-    description: "Multiply terrain by a radial falloff mask",
+    description: "Multiply terrain by a radial falloff mask, add a sea",
     build: () => {
       const g = new GraphBuilder();
       const p = g.add("gen:terrainGen", 40, 60, {
@@ -159,9 +159,33 @@ export const pipelineSamples: PipelineSample[] = [
       const r = g.add("radialGradient", 40, 260, { radius: 20, falloff: 2.4 });
       const b = g.add("blend", 300, 150, { mode: 1 });
       const c = g.add("curve", 520, 150, { gain: 8 });
-      const o = g.add("output", 740, 170);
+      const o = g.add("output", 740, 170, { colorMap: 1, waterLevel: 0.32 });
       g.link(p, "field", b, "a");
       g.link(r, "field", b, "b");
+      g.link(b, "out", c, "in");
+      g.link(c, "out", o, "in");
+      return g.build();
+    },
+  },
+  {
+    id: "biome-driven-terrain",
+    name: "Biome-Driven Terrain",
+    description: "WFC biome map converted to a height field, plus noise detail",
+    build: () => {
+      const g = new GraphBuilder();
+      const w = g.add("gen:waveFunctionCollapse", 40, 60, {
+        gridWidth: 28, gridHeight: 28, seed: 9,
+      });
+      const tf = g.add("tileToField", 260, 60, { mode: 0, heightScale: 1, smooth: 1 });
+      const detail = g.add("gen:terrainGen", 40, 260, {
+        scale: 9, octaves: 4, persistence: 0.5, lacunarity: 2, seed: 3, fbmMode: 0,
+      });
+      const b = g.add("blend", 480, 150, { mode: 4, mix: 0.18 });
+      const c = g.add("curve", 690, 150, { gain: 8 });
+      const o = g.add("output", 900, 170, { colorMap: 2, waterLevel: 0.22 });
+      g.link(w, "tilegrid", tf, "in");
+      g.link(tf, "out", b, "a");
+      g.link(detail, "field", b, "b");
       g.link(b, "out", c, "in");
       g.link(c, "out", o, "in");
       return g.build();

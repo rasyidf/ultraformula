@@ -151,7 +151,7 @@ export function evaluateGraph(
 
   let formula: Formula | null = null;
   try {
-    formula = synthesizeFormula(outputValue);
+    formula = synthesizeFormula(outputValue, outputNode.params);
   } catch (err) {
     errors.push({
       nodeId: outputNode.id,

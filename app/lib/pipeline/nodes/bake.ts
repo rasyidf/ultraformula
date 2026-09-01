@@ -1,4 +1,10 @@
 import {
+  applyHeightColors,
+  COLOR_MAP_IDS,
+  COLOR_MAP_LABELS,
+  colorMapIdFromIndex,
+} from "../colorMaps";
+import {
   EROSION_WORLD_MIN,
   EROSION_WORLD_SIZE,
   materializeField,
@@ -9,7 +15,7 @@ import {
 } from "../ops/fieldToGeometry";
 import { thermalErode } from "../ops/thermalErosion";
 import type { Heightmap, NodeDefinition, PortValue } from "../types";
-import { expectField, num } from "./_shared";
+import { expectField, num, select } from "./_shared";
 
 const WORLD_BOUNDS = {
   minX: EROSION_WORLD_MIN,
@@ -85,18 +91,27 @@ export const meshifyNode: NodeDefinition = {
     resolution: num("resolution", { min: 16, max: 220, step: 4, default: 96 }),
     heightScale: num("height scale", { min: 0.1, max: 30, step: 0.1, default: 8 }),
     worldSize: num("world size", { min: 10, max: 100, step: 1, default: 50 }),
+    colorMap: select(
+      "colour map",
+      COLOR_MAP_IDS.map((_, i) => i),
+      COLOR_MAP_IDS.map((id) => COLOR_MAP_LABELS[id]),
+      1,
+    ),
+    waterLevel: num("water level", { min: 0, max: 0.6, step: 0.02, default: 0 }),
   },
   evaluate: ({ inputs, params }): Record<string, PortValue> => {
+    const colorMap = colorMapIdFromIndex(params.colorMap ?? 0);
+    const waterLevel = params.waterLevel ?? 0;
     const hmInput = inputs.heightmap;
-    if (hmInput && hmInput.type === "heightmap") {
-      return { out: { type: "geometry", value: geometryFromHeightmap(hmInput.value) } };
-    }
-    const field = expectField(inputs.field, "Meshify");
-    const data = gridGeometryFromField(field, {
-      resolution: Math.round(params.resolution ?? 96),
-      heightScale: params.heightScale ?? 8,
-      worldSize: params.worldSize ?? 50,
-    });
+    let data =
+      hmInput && hmInput.type === "heightmap"
+        ? geometryFromHeightmap(hmInput.value)
+        : gridGeometryFromField(expectField(inputs.field, "Meshify"), {
+            resolution: Math.round(params.resolution ?? 96),
+            heightScale: params.heightScale ?? 8,
+            worldSize: params.worldSize ?? 50,
+          });
+    if (colorMap !== "none") data = applyHeightColors(data, { colorMap, waterLevel });
     return { out: { type: "geometry", value: data } };
   },
 };

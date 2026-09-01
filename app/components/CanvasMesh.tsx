@@ -56,6 +56,9 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
             color={materialColor}
             wireframe={wireframe}
             vertexColors={useVertexColors}
+            roughness={0.85}
+            metalness={0.04}
+            flatShading={false}
           />
         )}
         {materialType === "wobble" && (

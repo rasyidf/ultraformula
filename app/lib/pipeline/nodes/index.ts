@@ -21,6 +21,7 @@ import {
   transformNode,
 } from "./modifiers";
 import { outputNode } from "./output";
+import { tileToFieldNode } from "./tiles";
 
 export const nodeRegistry: Record<string, NodeDefinition> = {};
 
@@ -56,6 +57,9 @@ register(curveNode);
 register(remapNode);
 register(terraceNode);
 register(blurNode);
+
+// Tiles / constraint
+register(tileToFieldNode);
 
 // Simulation / bake
 register(erosionNode);
