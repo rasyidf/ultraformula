@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
-import { PerlinNoise } from "./noises/PerlinNoise";
+import { PerlinNoise, type FbmMode } from "./noises/PerlinNoise";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
+
+const FBM_MODES: FbmMode[] = ["standard", "ridged", "billowed"];
 
 export class TerrainFormula extends BaseFormula {
   metadata: FormulaMetadata = {
@@ -50,13 +52,25 @@ export class TerrainFormula extends BaseFormula {
         max: 1000,
         step: 1,
         isLocked: false
+      },
+      fbmMode: {
+        name: "fBm mode",
+        description: "0 = standard hills, 1 = ridged mountains, 2 = billowed dunes",
+        min: 0,
+        max: 2,
+        step: 1,
+        default: 0,
+        controlType: "select",
+        choices: [0, 1, 2],
+        isLocked: false
       }
     }
   };
 
   calculate(params: FormulaParams): number {
-    const { x = 0, y = 0, z = 0, scale, octaves, persistence, lacunarity, seed } = params;
-    return PerlinNoise.calculate(x / scale, y / scale, z / scale, octaves, persistence, lacunarity, seed);
+    const { x = 0, y = 0, z = 0, scale, octaves, persistence, lacunarity, seed, fbmMode = 0 } = params;
+    const mode = FBM_MODES[Math.min(FBM_MODES.length - 1, Math.max(0, Math.round(fbmMode)))];
+    return PerlinNoise.calculate(x / scale, y / scale, z / scale, octaves, persistence, lacunarity, seed, mode);
   }
 
   createGeometry(params: FormulaParams): THREE.BufferGeometry {
