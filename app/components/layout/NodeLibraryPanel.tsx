@@ -8,6 +8,7 @@ import type { NodeCategory, NodeDefinition } from "~/lib/pipeline/types";
 import { usePipelineStore } from "~/stores/pipelineStore";
 
 const CATEGORY_ORDER: NodeCategory[] = [
+  "Input",
   "Generator",
   "Noise",
   "Modifier",

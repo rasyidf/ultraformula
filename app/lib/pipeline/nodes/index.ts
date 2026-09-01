@@ -10,6 +10,7 @@ import {
   linearGradientNode,
   radialGradientNode,
 } from "./generators";
+import { randomNode, seedNode, valueNode } from "./inputs";
 import {
   blendNode,
   blurNode,
@@ -40,6 +41,11 @@ for (const [key, formula] of Object.entries(formulaRegistry)) {
     }),
   );
 }
+
+// Parameter inputs
+register(valueNode);
+register(seedNode);
+register(randomNode);
 
 // Procedural generators
 register(expressionNode);

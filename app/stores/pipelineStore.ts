@@ -34,6 +34,8 @@ export interface PipelineState {
   duplicateNode: (id: string) => void;
   updateNodeParam: (id: string, key: string, value: number) => void;
   updateNodeConfig: (id: string, key: string, value: string) => void;
+  toggleNodeExpanded: (id: string) => void;
+  selectAllNodes: () => void;
 
   setGraph: (nodes: RFNode[], edges: RFEdge[]) => void;
   reset: () => void;
@@ -118,6 +120,23 @@ export const usePipelineStore = create<PipelineState>()(
               ? { ...n, data: { ...n.data, config: { ...n.data.config, [key]: value } } }
               : n,
           ),
+        });
+      },
+
+      toggleNodeExpanded: (id) => {
+        set({
+          nodes: get().nodes.map((n) =>
+            n.id === id
+              ? { ...n, data: { ...n.data, expanded: !n.data.expanded } }
+              : n,
+          ),
+        });
+      },
+
+      selectAllNodes: () => {
+        set({
+          nodes: get().nodes.map((n) => ({ ...n, selected: true })),
+          selectedNodeId: null,
         });
       },
 

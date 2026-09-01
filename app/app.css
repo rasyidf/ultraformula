@@ -178,15 +178,40 @@ body {
   opacity: 0.4;
 }
 .react-flow__handle {
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--background);
+  border-color: var(--card);
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+.react-flow__handle:hover {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 35%, transparent);
+}
+.react-flow__handle.connecting,
+.react-flow__handle.valid {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 45%, transparent);
 }
 .react-flow__edge-path {
-  stroke-width: 1.5;
+  stroke-width: 2;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--primary) !important;
+  stroke-width: 2.5;
+}
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+}
+.react-flow__node.selected {
+  z-index: 10;
 }
 .pipeline-node-error > div {
   outline: 2px solid var(--destructive);
   outline-offset: 2px;
   border-radius: 0.5rem;
+}
+/* inline param inputs on nodes */
+.react-flow__node input.nodrag,
+.react-flow__node select.nodrag {
+  outline: none;
+}
+.react-flow__node input.nodrag:focus,
+.react-flow__node select.nodrag:focus {
+  border-color: var(--ring);
 }

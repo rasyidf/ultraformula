@@ -73,12 +73,20 @@ export interface ConfigField {
 }
 
 export type NodeCategory =
+  | "Input"
   | "Generator"
   | "Noise"
   | "Modifier"
   | "Simulation"
   | "Constraint"
   | "Output";
+
+/** Prefix for a handle that drives a node parameter (e.g. "param:seed"). */
+export const PARAM_HANDLE_PREFIX = "param:";
+export const isParamHandle = (id?: string | null): id is string =>
+  !!id && id.startsWith(PARAM_HANDLE_PREFIX);
+export const paramKeyFromHandle = (id: string): string =>
+  id.slice(PARAM_HANDLE_PREFIX.length);
 
 export interface NodeDefinition {
   type: string;

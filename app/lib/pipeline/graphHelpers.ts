@@ -7,6 +7,8 @@ export interface PipelineNodeData {
   nodeType: string;
   params: FormulaParams;
   config: Record<string, string>;
+  /** show every parameter row (with its input socket) on the node body */
+  expanded?: boolean;
   [key: string]: unknown;
 }
 
@@ -45,7 +47,12 @@ export function makeNode(
     id,
     type: "pipelineNode",
     position,
-    data: { nodeType: type, params: defaultParams(type), config: defaultConfig(type) },
+    data: {
+      nodeType: type,
+      params: defaultParams(type),
+      config: defaultConfig(type),
+      expanded: false,
+    },
   };
 }
 

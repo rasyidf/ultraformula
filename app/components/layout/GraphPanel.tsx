@@ -11,23 +11,33 @@ export function GraphPanel({ errors }: Props) {
   const nodeCount = usePipelineStore((s) => s.nodes.length);
   const selectedNodeId = usePipelineStore((s) => s.selectedNodeId);
   const duplicateNode = usePipelineStore((s) => s.duplicateNode);
-  const removeNode = usePipelineStore((s) => s.removeNode);
+  const selectAllNodes = usePipelineStore((s) => s.selectAllNodes);
 
   const errorNodeIds = new Set(errors.map((e) => e.nodeId).filter(Boolean));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-      if (!selectedNodeId) return;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+      const editable =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable;
+      if (editable) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "a") {
+        // Select all nodes in the graph instead of selecting all page text.
+        e.preventDefault();
+        selectAllNodes();
+      } else if (mod && e.key.toLowerCase() === "d" && selectedNodeId) {
         e.preventDefault();
         duplicateNode(selectedNodeId);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedNodeId, duplicateNode, removeNode]);
+  }, [selectedNodeId, duplicateNode, selectAllNodes]);
 
   return (
     <div className="flex h-full flex-col">

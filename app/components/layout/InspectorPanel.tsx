@@ -20,6 +20,7 @@ import { Slider } from "~/components/ui/slider";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { getNodeDefinition } from "~/lib/pipeline/nodes";
+import { isParamHandle, paramKeyFromHandle } from "~/lib/pipeline/types";
 import { resolveActiveView } from "~/lib/renderViews";
 import { usePipelineStore } from "~/stores/pipelineStore";
 import { useSceneStore } from "~/stores/sceneStore";
@@ -38,9 +39,17 @@ export function InspectorPanel({ formula }: { formula: Formula | null }) {
   const updateNodeParam = usePipelineStore((s) => s.updateNodeParam);
   const updateNodeConfig = usePipelineStore((s) => s.updateNodeConfig);
   const removeNode = usePipelineStore((s) => s.removeNode);
+  const linkedParamKey = usePipelineStore((s) =>
+    s.edges
+      .filter((e) => e.target === s.selectedNodeId && isParamHandle(e.targetHandle))
+      .map((e) => paramKeyFromHandle(e.targetHandle as string))
+      .sort()
+      .join("|"),
+  );
 
   if (selectedNodeId && node) {
     const def = getNodeDefinition(node.data.nodeType);
+    const linked = new Set(linkedParamKey ? linkedParamKey.split("|") : []);
     return (
       <ScrollArea className="h-full">
         <div className="space-y-4 p-3">
@@ -83,13 +92,20 @@ export function InspectorPanel({ formula }: { formula: Formula | null }) {
 
           <div className="space-y-4">
             {Object.entries(def?.params ?? {}).map(([key, meta]) => (
-              <ParameterControl
-                key={key}
-                paramKey={key}
-                metadata={meta}
-                value={node.data.params[key]}
-                onChange={(v) => updateNodeParam(node.id, key, v)}
-              />
+              <div key={key}>
+                {linked.has(key) && (
+                  <p className="mb-1 text-[10px] font-medium uppercase text-sky-500">
+                    driven by an input socket
+                  </p>
+                )}
+                <ParameterControl
+                  paramKey={key}
+                  metadata={meta}
+                  value={node.data.params[key]}
+                  isLocked={linked.has(key)}
+                  onChange={(v) => updateNodeParam(node.id, key, v)}
+                />
+              </div>
             ))}
             {def && Object.keys(def.params).length === 0 && !def.configFields && (
               <p className="text-xs text-muted-foreground">This node has no settings.</p>

@@ -1,7 +1,14 @@
 import type { Formula } from "~/types/Formula";
 import { getNodeDefinition } from "./nodes";
 import { synthesizeFormula } from "./synthesizeFormula";
-import type { GraphEdge, GraphNode, NodeError, PortValue } from "./types";
+import {
+  isParamHandle,
+  paramKeyFromHandle,
+  type GraphEdge,
+  type GraphNode,
+  type NodeError,
+  type PortValue,
+} from "./types";
 
 export interface EvalResult {
   formula: Formula | null;
@@ -80,6 +87,7 @@ export function evaluateGraph(
 
   const hashes = new Map<string, string>();
   const outputs = new Map<string, Record<string, PortValue>>();
+  const resolvedParams = new Map<string, Record<string, number>>();
 
   for (const id of order) {
     const node = nodeById.get(id)!;
@@ -92,12 +100,28 @@ export function evaluateGraph(
     }
 
     const inEdges = incoming.get(id) ?? [];
+
+    const inputs: Record<string, PortValue | undefined> = {};
+    const paramOverrides: Record<string, number> = {};
+    for (const e of inEdges) {
+      const upstream = outputs.get(e.source)?.[e.sourceHandle];
+      if (isParamHandle(e.targetHandle)) {
+        if (upstream && upstream.type === "number") {
+          paramOverrides[paramKeyFromHandle(e.targetHandle)] = upstream.value;
+        }
+      } else {
+        inputs[e.targetHandle] = upstream;
+      }
+    }
+    const effectiveParams = { ...node.params, ...paramOverrides };
+    resolvedParams.set(id, effectiveParams);
+
     const upstreamHashes = inEdges
       .map((e) => `${e.targetHandle}<-${hashes.get(e.source) ?? ""}:${e.sourceHandle}`)
       .sort();
     const hash = stableStringify({
       t: node.type,
-      p: node.params,
+      p: effectiveParams,
       c: node.config ?? {},
       u: upstreamHashes,
     });
@@ -109,15 +133,10 @@ export function evaluateGraph(
       continue;
     }
 
-    const inputs: Record<string, PortValue | undefined> = {};
-    for (const e of inEdges) {
-      inputs[e.targetHandle] = outputs.get(e.source)?.[e.sourceHandle];
-    }
-
     try {
       const result = def.evaluate({
         inputs,
-        params: node.params,
+        params: effectiveParams,
         config: node.config ?? {},
       });
       outputs.set(id, result);
@@ -151,7 +170,10 @@ export function evaluateGraph(
 
   let formula: Formula | null = null;
   try {
-    formula = synthesizeFormula(outputValue, outputNode.params);
+    formula = synthesizeFormula(
+      outputValue,
+      resolvedParams.get(outputNode.id) ?? outputNode.params,
+    );
   } catch (err) {
     errors.push({
       nodeId: outputNode.id,

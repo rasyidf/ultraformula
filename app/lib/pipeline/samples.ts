@@ -16,7 +16,7 @@ class GraphBuilder {
     x: number,
     y: number,
     params: FormulaParams = {},
-    config: Record<string, string> = {},
+    opts: { config?: Record<string, string>; expanded?: boolean } = {},
   ): string {
     const id = `s${++this.counter}`;
     this.nodes.push({
@@ -26,7 +26,8 @@ class GraphBuilder {
       data: {
         nodeType: type,
         params: { ...defaultParams(type), ...params },
-        config: { ...defaultConfig(type), ...config },
+        config: { ...defaultConfig(type), ...(opts.config ?? {}) },
+        expanded: opts.expanded ?? false,
       },
     });
     return id;
@@ -210,6 +211,37 @@ export const pipelineSamples: PipelineSample[] = [
     },
   },
   {
+    id: "shared-seed",
+    name: "Shared Seed",
+    description: "One Seed node drives two noise layers — bump it to re-roll both",
+    build: () => {
+      const g = new GraphBuilder();
+      const seed = g.add("seed", 20, 150, { seed: 1337 });
+      const base = g.add(
+        "gen:terrainGen",
+        260, 40,
+        { scale: 55, octaves: 3, persistence: 0.5, lacunarity: 2, fbmMode: 0 },
+        { expanded: true },
+      );
+      const detail = g.add(
+        "gen:terrainGen",
+        260, 300,
+        { scale: 15, octaves: 5, persistence: 0.45, lacunarity: 2.2, fbmMode: 1 },
+        { expanded: true },
+      );
+      const b = g.add("blend", 560, 160, { mode: 0, mix: 0.5 });
+      const c = g.add("curve", 760, 160, { gain: 3.5 });
+      const o = g.add("output", 960, 180);
+      g.link(seed, "number", base, "param:seed");
+      g.link(seed, "number", detail, "param:seed");
+      g.link(base, "field", b, "a");
+      g.link(detail, "field", b, "b");
+      g.link(b, "out", c, "in");
+      g.link(c, "out", o, "in");
+      return g.build();
+    },
+  },
+  {
     id: "warped-cells",
     name: "Warped Cells",
     description: "Worley cellular noise distorted by a domain warp",
@@ -252,7 +284,7 @@ export const pipelineSamples: PipelineSample[] = [
         60,
         140,
         { amplitude: 3 },
-        { expr: "= sin(sqrt(x*x + z*z) * 0.6) * 3 + cos(x * 0.2) * 1.5" },
+        { config: { expr: "= sin(sqrt(x*x + z*z) * 0.6) * 3 + cos(x * 0.2) * 1.5" } },
       );
       const o = g.add("output", 340, 160);
       g.link(x, "field", o, "in");
