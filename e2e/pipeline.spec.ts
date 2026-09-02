@@ -58,3 +58,60 @@ test.describe("pipeline viewport", () => {
     expect(consoleErrors).toEqual([]);
   });
 });
+
+/**
+ * Parametric generators (Gielis, Torus, …) wired straight to Output take the
+ * deferred-geometry path: the Worker emits a `geometrySpec` and the mesh is
+ * built main-thread in `payloadToFormula` (`parametricGeometry.ts`). Seed a
+ * two-node graph per formula via localStorage and check it renders.
+ */
+const PARAMETRIC = [
+  "gielis",
+  "torus",
+  "lissajous",
+  "gyroid",
+  "mobius",
+  "kleinBottle",
+  "roseCurve",
+  "sineInterference",
+  "cartesianSine",
+];
+
+function seedGraph(key: string) {
+  const node = (id: string, nodeType: string, x: number) => ({
+    id,
+    type: "pipelineNode",
+    position: { x, y: 0 },
+    data: { nodeType, params: {}, config: {}, expanded: false },
+  });
+  return {
+    state: {
+      nodes: [node("g", `gen:${key}`, 0), node("o", "output", 320)],
+      edges: [
+        { id: "e1", source: "g", sourceHandle: "field", target: "o", targetHandle: "in" },
+      ],
+    },
+    version: 0,
+  };
+}
+
+test.describe("parametric generator meshes", () => {
+  for (const key of PARAMETRIC) {
+    test(`${key} → Output renders a mesh`, async ({ page }) => {
+      const consoleErrors: string[] = [];
+      page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text()));
+      page.on("pageerror", (e) => consoleErrors.push(e.message));
+
+      await page.addInitScript(
+        ([storageKey, value]) => window.localStorage.setItem(storageKey, value),
+        ["ultraformula.pipeline.v2", JSON.stringify(seedGraph(key))] as const,
+      );
+
+      await page.goto("/");
+      await expect(page.locator("#viewport canvas").first()).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText("evaluating")).toBeHidden({ timeout: 15_000 });
+      await expect(page.locator(ERROR_INDICATOR)).toHaveCount(0);
+      expect(consoleErrors).toEqual([]);
+    });
+  }
+});

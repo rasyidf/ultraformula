@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 // Assume WorleyNoise is implemented similar to your PerlinNoise
 import { WorleyNoise } from "./noises/WorleyNoise";
@@ -74,7 +73,4 @@ export class CellularNoiseFormula extends BaseFormula {
     ) * 2; // Multiply by 2 to make the pattern more visible
   }
 
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    return WorleyNoise.createTerrainGeometry(params, (p) => this.calculate(p));
-  }
 }

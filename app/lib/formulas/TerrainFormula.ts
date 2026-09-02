@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 import { PerlinNoise, type FbmMode } from "./noises/PerlinNoise";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
@@ -79,7 +78,4 @@ export class TerrainFormula extends BaseFormula {
     return PerlinNoise.calculate(x / scale, y / scale, z / scale, octaves, persistence, lacunarity, seed, mode);
   }
 
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    return PerlinNoise.createTerrainGeometry(params, this.calculate.bind(this));
-  }
 }

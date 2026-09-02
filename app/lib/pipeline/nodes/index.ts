@@ -30,7 +30,7 @@ function register(...defs: NodeDefinition[]) {
 
 /**
  * x/z scalar noise fields: grid-sample them with vertical exaggeration rather
- * than using the formula's own (flat) createGeometry.
+ * than treating them as parametric surfaces.
  */
 const TERRAIN_LIKE = new Set(["terrainGen", "cellularNoise"]);
 

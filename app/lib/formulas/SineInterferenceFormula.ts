@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
 
@@ -60,66 +59,6 @@ export class SineInterferenceFormula extends BaseFormula {
     const wave2 = amplitude2 * Math.sin(frequency2 * phi + phase);
     
     return 1 + wave1 * Math.sin(theta) + wave2 * Math.cos(theta);
-  }
-
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    const segments = 128;
-    const rings = 128;
-    const maxPhi = Math.PI * 2;
-    const maxTheta = Math.PI;
-    
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    const normals: number[] = [];
-    const uvs: number[] = [];
-
-    for (let ring = 0; ring <= rings; ring++) {
-      const theta = (ring / rings) * maxTheta;
-      const sinTheta = Math.sin(theta);
-      const cosTheta = Math.cos(theta);
-
-      for (let segment = 0; segment <= segments; segment++) {
-        const phi = (segment / segments) * maxPhi;
-        
-        const r = this.calculate({ ...params, phi, theta });
-
-        // Convert to Cartesian coordinates
-        const x = r * sinTheta * Math.cos(phi);
-        const y = r * cosTheta;
-        const z = r * sinTheta * Math.sin(phi);
-
-        // Add vertex
-        vertices.push(x, y, z);
-        
-        // Normals (simplified)
-        const normal = new THREE.Vector3(x, y, z).normalize();
-        normals.push(normal.x, normal.y, normal.z);
-        
-        // UV coordinates
-        const u = segment / segments;
-        const v = ring / rings;
-        uvs.push(u, v);
-      }
-    }
-
-    // Create indices
-    for (let ring = 0; ring < rings; ring++) {
-      for (let segment = 0; segment < segments; segment++) {
-        const first = (ring * (segments + 1)) + segment;
-        const second = first + segments + 1;
-        
-        indices.push(first, second, first + 1);
-        indices.push(second, second + 1, first + 1);
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geometry.setIndex(indices);
-    
-    return geometry;
   }
 
   // Implement 2D methods for sine interference

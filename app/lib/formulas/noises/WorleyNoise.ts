@@ -1,5 +1,3 @@
-
-import * as THREE from "three";
 import type { FormulaParams } from "~/types/Formula";
 
 /**
@@ -33,39 +31,6 @@ export class WorleyNoise {
     }
 
     return total / maxValue;
-  }
-
-  static createTerrainGeometry(params: FormulaParams, calculateFormula: (params: FormulaParams) => number) {
-    const gridSize = 50;
-    const vertices = [];
-    const indices = [];
-
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        const x = (i - gridSize / 2);
-        const z = (j - gridSize / 2);
-        const y = calculateFormula({ ...params, x, y: 0, z });
-
-        vertices.push(x, y, z);
-
-        if (i < gridSize - 1 && j < gridSize - 1) {
-          const a = i * gridSize + j;
-          const b = i * gridSize + j + 1;
-          const c = (i + 1) * gridSize + j;
-          const d = (i + 1) * gridSize + j + 1;
-
-          indices.push(a, b, d);
-          indices.push(a, d, c);
-        }
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
-    return geometry;
   }
 
   /**

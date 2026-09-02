@@ -1,4 +1,6 @@
 import type { Formula } from "~/types/Formula";
+import { getFormula } from "~/lib/formulas";
+import { buildParametricGeometry } from "~/lib/formulas/parametricGeometry";
 import { bufferGeometryFromData } from "./geometryThree";
 import { sampleHeightGrid } from "./ops/erosion";
 import type { GridData, RenderPayload } from "./renderPayload";
@@ -44,15 +46,26 @@ export function payloadToFormula(payload: RenderPayload): Formula {
     case "geometry":
     case "heightmap": {
       const { dataGrid, texture } = payload;
-      const geometry = payload.geometry ?? null;
+      let geometry = payload.geometry ?? null;
+
+      // A parametric generator wired straight to Output defers its mesh to here
+      // so the Worker stays THREE-free.
+      if (payload.kind === "field" && payload.geometrySpec) {
+        const { formula: key, params } = payload.geometrySpec;
+        geometry = buildParametricGeometry(key, getFormula(key), params) ?? geometry;
+      }
+
       const formula: Formula = {
-        metadata: baseMeta,
+        metadata: geometry
+          ? { ...baseMeta, supportsVertexColors: !!geometry.colors }
+          : baseMeta,
         calculate: (p) => sampleGrid(dataGrid, p.x ?? 0, p.z ?? 0),
         createFieldGrid: () => dataGrid,
         createTexture: () => texture,
       };
       if (geometry) {
-        formula.createGeometry = () => bufferGeometryFromData(geometry);
+        const geo = geometry;
+        formula.createGeometry = () => bufferGeometryFromData(geo);
       }
       if (payload.kind === "field") {
         const { plot } = payload;

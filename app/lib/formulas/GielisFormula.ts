@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
 
@@ -68,89 +67,6 @@ export class GielisFormula extends BaseFormula {
     const part1 = Math.abs(Math.cos(m * phi / 4) / a) ** n2;
     const part2 = Math.abs(Math.sin(m * phi / 4) / b) ** n3;
     return (part1 + part2) ** (-1 / n1);
-  }
-
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    const segments = 180;
-    const rings = 180;
-    const maxPhi = Math.PI * 2;
-    const maxTheta = Math.PI;
-    
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    const normals: number[] = [];
-    const uvs: number[] = [];
-    const colors: number[] = [];
-
-    for (let ring = 0; ring <= rings; ring++) {
-      const theta = (ring / rings) * maxTheta;
-      const sinTheta = Math.sin(theta);
-      const cosTheta = Math.cos(theta);
-
-      for (let segment = 0; segment <= segments; segment++) {
-        const phi = (segment / segments) * maxPhi;
-        
-        params.phi = phi;
-        const r = this.calculate(params);
-
-        // Convert to Cartesian coordinates
-        const x = r * sinTheta * Math.cos(phi);
-        const y = r * cosTheta;
-        const z = r * sinTheta * Math.sin(phi);
-
-        // Add vertex
-        vertices.push(x, y, z);
-        
-        // Normals (simplified)
-        const normal = new THREE.Vector3(x, y, z).normalize();
-        normals.push(normal.x, normal.y, normal.z);
-        
-        // UV coordinates
-        const u = segment / segments;
-        const v = ring / rings;
-        uvs.push(u, v);
-        
-        // Color based on parameters (color-coded parts)
-        const position = new THREE.Vector3(x, y, z);
-        const color = this.calculateColor(position, params, { u, v });
-        colors.push(color.r, color.g, color.b);
-      }
-    }
-
-    // Create indices
-    for (let ring = 0; ring < rings; ring++) {
-      for (let segment = 0; segment < segments; segment++) {
-        const first = (ring * (segments + 1)) + segment;
-        const second = first + segments + 1;
-        
-        indices.push(first, second, first + 1);
-        indices.push(second, second + 1, first + 1);
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geometry.setIndex(indices);
-    
-    return geometry;
-  }
-
-  calculateColor(position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }): THREE.Color {
-    // Color based on angular position (creates rainbow gradient around shape)
-    if (uv) {
-      const hue = uv.u; // Horizontal angle creates color gradient
-      const saturation = 0.7 + Math.sin(uv.v * Math.PI) * 0.2;
-      const lightness = 0.5 + Math.cos(uv.v * Math.PI * 2) * 0.2;
-      return new THREE.Color().setHSL(hue, saturation, lightness);
-    }
-    
-    // Fallback: color based on position
-    const angle = Math.atan2(position.z, position.x);
-    const hue = (angle + Math.PI) / (Math.PI * 2);
-    return new THREE.Color().setHSL(hue, 0.7, 0.5);
   }
 
   // Implement 2D methods

@@ -1,5 +1,4 @@
 import type { Formula } from "~/types/Formula";
-import { geometryDataFromBufferGeometry } from "../geometryThree";
 import type { Field, NodeDefinition, PortValue } from "../types";
 
 /**
@@ -9,8 +8,8 @@ import type { Field, NodeDefinition, PortValue } from "../types";
  */
 export interface GeneratorOptions {
   /**
-   * True for x/z scalar fields (Perlin, Worley): skip the formula's own flat
-   * `createGeometry` and let the Output grid-sample with vertical exaggeration.
+   * True for x/z scalar fields (Perlin, Worley): grid-sample the field with
+   * vertical exaggeration instead of treating it as a parametric surface.
    */
   terrainLike?: boolean;
 }
@@ -23,7 +22,9 @@ export function formulaAsGeneratorNode(
   const meta = formula.metadata;
   const hasTileGrid = typeof formula.createTileGrid === "function";
   const is3d = meta.supportedDimensions.includes("3d");
-  const useOwnGeometry = !opts.terrainLike && typeof formula.createGeometry === "function";
+  // Parametric formulas (Gielis, Torus, …) carry their own display mesh, built
+  // main-thread from this key. Noise-like generators are grid-sampled instead.
+  const useOwnGeometry = is3d && !opts.terrainLike && !hasTileGrid;
   const isNoise = !!meta.categories?.includes("Noise");
 
   return {
@@ -48,8 +49,8 @@ export function formulaAsGeneratorNode(
         sample: (x, y, z) =>
           formula.calculate({ phi: params.phi ?? 0, ...params, x, y, z }),
         dimensionHint: is3d ? "3d" : "2d",
-        makeGeometry: useOwnGeometry
-          ? () => geometryDataFromBufferGeometry(formula.createGeometry!(params))
+        geometrySpec: useOwnGeometry
+          ? { formula: key, params: { ...params } }
           : undefined,
         makePlot: formula.createPlotData
           ? (res) => formula.createPlotData!(params, res)

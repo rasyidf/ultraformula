@@ -17,11 +17,13 @@ export interface Field {
   sample: (x: number, y: number, z: number) => number;
   dimensionHint: "2d" | "3d";
   /**
-   * Preferred geometry builder (a formula-backed generator supplies its own
-   * mesh here). When absent, consumers fall back to a grid sampler over
-   * `sample`.
+   * A formula-backed generator names its display-mesh builder here (see
+   * `app/lib/formulas/parametricGeometry.ts`). Kept as a plain descriptor — not
+   * a closure — so it survives the Worker boundary; the mesh is built on the
+   * main thread in `payloadToFormula`. When absent, consumers fall back to a
+   * grid sampler over `sample`.
    */
-  makeGeometry?: () => GeometryData;
+  geometrySpec?: { formula: string; params: FormulaParams };
   /** Preferred 2D plot builder (falls back to sampling `sample` along x). */
   makePlot?: (resolution: number) => { x: number[]; y: number[] };
 }

@@ -80,6 +80,8 @@ export type RenderPayload =
       kind: "field";
       meta: PayloadMeta;
       geometry: GeometryData | null;
+      /** A parametric formula's mesh, built main-thread in `payloadToFormula`. */
+      geometrySpec?: { formula: string; params: Record<string, number> };
       dataGrid: GridData;
       texture: TextureData;
       plot: { x: Float32Array; y: Float32Array };
@@ -178,14 +180,15 @@ export function payloadFromPortValue(value: PortValue): RenderPayload {
     case "field": {
       const field = value.value;
       const is3d = field.dimensionHint === "3d";
-      const geometry: GeometryData | null = is3d
-        ? field.makeGeometry
-          ? field.makeGeometry()
-          : gridGeometryFromField(field, {
+      // A parametric generator defers its mesh (built main-thread, keeps THREE
+      // out of the Worker); everything else 3D is grid-sampled here.
+      const geometry: GeometryData | null =
+        is3d && !field.geometrySpec
+          ? gridGeometryFromField(field, {
               resolution: FIELD_MESH_RES,
               heightScale: FIELD_MESH_HEIGHT_SCALE,
             })
-        : null;
+          : null;
       const texGrid = fieldGrid(field.sample, FIELD_BOUNDS, TEXTURE_RES);
       const plot = field.makePlot
         ? field.makePlot(PLOT_RES)
@@ -202,9 +205,12 @@ export function payloadFromPortValue(value: PortValue): RenderPayload {
             "plot2d",
             "data2d",
           ],
+          // A deferred parametric mesh may still add colours; `payloadToFormula`
+          // updates this once the mesh is built.
           supportsVertexColors: !!geometry?.colors,
         },
         geometry,
+        geometrySpec: field.geometrySpec,
         dataGrid: fieldGrid(field.sample, FIELD_BOUNDS, DATA_GRID_RES),
         texture: textureFromGrid(texGrid),
         plot: {
