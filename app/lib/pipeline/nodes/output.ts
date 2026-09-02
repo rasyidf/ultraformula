@@ -56,9 +56,10 @@ export const colorizeNode: NodeDefinition = {
 };
 
 /**
- * Output — terminal node. Its upstream value is wrapped into a synthetic
- * Formula by `evaluateGraph` (see synthesizeFormula.ts) and shown in the
- * viewport. Theme-agnostic: colour comes from Colorize.
+ * Output — terminal node. Its upstream value is materialised into a serialisable
+ * RenderPayload by `evaluateGraph` (see renderPayload.ts), then rehydrated into a
+ * Formula on the main thread (payloadToFormula.ts). Theme-agnostic: colour comes
+ * from Colorize.
  */
 export const outputNode: NodeDefinition = {
   type: "output",

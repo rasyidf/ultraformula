@@ -5,4 +5,10 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  // The graph-evaluation worker imports via the `~/` alias, so the worker
+  // sub-build needs the tsconfig-paths resolver too.
+  worker: {
+    format: "es",
+    plugins: () => [tsconfigPaths()],
+  },
 });

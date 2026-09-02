@@ -1,6 +1,5 @@
-import type { Formula } from "~/types/Formula";
 import { getNodeDefinition } from "./nodes";
-import { synthesizeFormula } from "./synthesizeFormula";
+import { payloadFromPortValue, type RenderPayload } from "./renderPayload";
 import {
   DEFAULT_EVAL_ENV,
   isParamHandle,
@@ -13,9 +12,9 @@ import {
 } from "./types";
 
 export interface EvalResult {
-  formula: Formula | null;
+  /** Serialisable render snapshot — `null` when the graph produced nothing. */
+  payload: RenderPayload | null;
   errors: NodeError[];
-  outputValue: PortValue | null;
 }
 
 interface CacheEntry {
@@ -49,9 +48,8 @@ export function evaluateGraph(
   const outputNode = nodes.find((n) => n.type === "output");
   if (!outputNode) {
     return {
-      formula: null,
+      payload: null,
       errors: [{ nodeId: "", message: "Add an Output node to render the graph" }],
-      outputValue: null,
     };
   }
 
@@ -82,9 +80,8 @@ export function evaluateGraph(
 
   if (cyclic) {
     return {
-      formula: null,
+      payload: null,
       errors: [{ nodeId: outputNode.id, message: "Graph contains a cycle" }],
-      outputValue: null,
     };
   }
 
@@ -163,17 +160,16 @@ export function evaluateGraph(
 
   if (!outputValue) {
     return {
-      formula: null,
+      payload: null,
       errors: errors.length
         ? errors
         : [{ nodeId: outputNode.id, message: "Connect a node to the Output" }],
-      outputValue: null,
     };
   }
 
-  let formula: Formula | null = null;
+  let payload: RenderPayload | null = null;
   try {
-    formula = synthesizeFormula(outputValue);
+    payload = payloadFromPortValue(outputValue);
   } catch (err) {
     errors.push({
       nodeId: outputNode.id,
@@ -181,5 +177,5 @@ export function evaluateGraph(
     });
   }
 
-  return { formula, errors, outputValue };
+  return { payload, errors };
 }

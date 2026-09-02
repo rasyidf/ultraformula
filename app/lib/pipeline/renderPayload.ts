@@ -1,6 +1,5 @@
-import type { Formula, FormulaParams } from "~/types/Formula";
+import type { TileGridResult } from "~/types/Formula";
 import { equalizedColors } from "./colorMaps";
-import { bufferGeometryFromData } from "./geometryThree";
 import {
   EROSION_WORLD_MIN,
   EROSION_WORLD_SIZE,
@@ -13,6 +12,13 @@ import {
 } from "./ops/fieldToGeometry";
 import type { GeometryData, Heightmap, PortValue } from "./types";
 
+/**
+ * A serialisable snapshot of the graph's Output, produced by `evaluateGraph`
+ * (worker-side today, WASM-backed later). It carries only plain typed arrays and
+ * POJOs — no closures, no THREE — so it survives `postMessage`. The main thread
+ * turns it back into a `Formula` via `payloadToFormula`.
+ */
+
 export const FIELD_BOUNDS = {
   minX: EROSION_WORLD_MIN,
   minZ: EROSION_WORLD_MIN,
@@ -22,11 +28,70 @@ export const FIELD_BOUNDS = {
 /** Neutral map for raw (un-colorized) field / heightmap previews. */
 const RAW_TEXTURE_MAP = "viridis" as const;
 
+/** Materialisation resolutions — the call sites in the render views pass these
+ * exact constants today, so baking at fixed size loses nothing. */
+export const DATA_GRID_RES = 16;
+export const TEXTURE_RES = 320;
+export const PLOT_RES = 300;
+const FIELD_MESH_RES = 72;
+const FIELD_MESH_HEIGHT_SCALE = 6;
+
+export interface GridData {
+  width: number;
+  height: number;
+  /** row-major, length width*height */
+  data: Float32Array;
+  bounds: { minX: number; minZ: number; size: number };
+  /** optional rgb triples (0..1) carried from geometry vertex colours */
+  colors?: Float32Array;
+}
+
+export interface TextureData {
+  width: number;
+  height: number;
+  /** rgb triples, 0..1, row-major */
+  rgb: Float32Array;
+}
+
+export interface PayloadMeta {
+  name: string;
+  description: string;
+  supportedDimensions: ("2d" | "3d")[];
+  renderViews: string[];
+  supportsVertexColors?: boolean;
+}
+
+export type RenderPayload =
+  | {
+      kind: "geometry";
+      meta: PayloadMeta;
+      geometry: GeometryData;
+      dataGrid: GridData;
+      texture: TextureData;
+    }
+  | {
+      kind: "heightmap";
+      meta: PayloadMeta;
+      geometry: GeometryData;
+      dataGrid: GridData;
+      texture: TextureData;
+    }
+  | {
+      kind: "field";
+      meta: PayloadMeta;
+      geometry: GeometryData | null;
+      dataGrid: GridData;
+      texture: TextureData;
+      plot: { x: Float32Array; y: Float32Array };
+    }
+  | { kind: "tilegrid"; meta: PayloadMeta; grid: TileGridResult }
+  | { kind: "scalar"; meta: PayloadMeta; value: number };
+
 function fieldGrid(
   sample: (x: number, y: number, z: number) => number,
   bounds: { minX: number; minZ: number; size: number },
   resolution: number,
-) {
+): GridData {
   const res = Math.max(2, Math.round(resolution));
   const data = new Float32Array(res * res);
   for (let j = 0; j < res; j++) {
@@ -40,7 +105,7 @@ function fieldGrid(
 }
 
 /** Top-down max-height raster of arbitrary geometry (carries vertex colour). */
-function rasterizeGeometry(geo: GeometryData, resolution: number) {
+function rasterizeGeometry(geo: GeometryData, resolution: number): GridData {
   const res = Math.max(2, Math.round(resolution));
   const pos = geo.positions;
   const col = geo.colors;
@@ -96,26 +161,40 @@ function rasterizeGeometry(geo: GeometryData, resolution: number) {
   };
 }
 
+function textureFromGrid(grid: GridData): TextureData {
+  return {
+    width: grid.width,
+    height: grid.height,
+    rgb: grid.colors ?? equalizedColors(grid.data, { colorMap: RAW_TEXTURE_MAP }),
+  };
+}
+
 /**
- * Wrap the OutputNode's upstream value in a Formula-shaped object that flows
- * unchanged into FormulaCanvasWrapper + the render-view registry. Colour is
- * carried in from a Colorize node — Output is theme-agnostic.
+ * Turn the Output node's upstream value into a `RenderPayload`. Lazy fields are
+ * materialised here (the point where evaluation used to hand back closures).
  */
-export function synthesizeFormula(value: PortValue): Formula {
+export function payloadFromPortValue(value: PortValue): RenderPayload {
   switch (value.type) {
     case "field": {
       const field = value.value;
       const is3d = field.dimensionHint === "3d";
-      const geometryData: GeometryData | null = is3d
+      const geometry: GeometryData | null = is3d
         ? field.makeGeometry
           ? field.makeGeometry()
-          : gridGeometryFromField(field, { resolution: 72, heightScale: 6 })
+          : gridGeometryFromField(field, {
+              resolution: FIELD_MESH_RES,
+              heightScale: FIELD_MESH_HEIGHT_SCALE,
+            })
         : null;
+      const texGrid = fieldGrid(field.sample, FIELD_BOUNDS, TEXTURE_RES);
+      const plot = field.makePlot
+        ? field.makePlot(PLOT_RES)
+        : plotFromField(field, PLOT_RES);
       return {
-        metadata: {
+        kind: "field",
+        meta: {
           name: "Pipeline Output",
           description: "Field produced by the node graph",
-          parameters: {},
           supportedDimensions: is3d ? ["3d"] : ["2d"],
           renderViews: [
             ...(is3d ? ["mesh3d"] : []),
@@ -123,113 +202,80 @@ export function synthesizeFormula(value: PortValue): Formula {
             "plot2d",
             "data2d",
           ],
-          supportsVertexColors: !!geometryData?.colors,
+          supportsVertexColors: !!geometry?.colors,
         },
-        calculate: (p: FormulaParams) => field.sample(p.x ?? 0, p.y ?? 0, p.z ?? 0),
-        createGeometry: geometryData
-          ? () => bufferGeometryFromData(geometryData)
-          : undefined,
-        createPlotData: (_p, res) =>
-          field.makePlot ? field.makePlot(res) : plotFromField(field, res),
-        createFieldGrid: (res) => fieldGrid(field.sample, FIELD_BOUNDS, res),
-        createTexture: (res) => {
-          const g = fieldGrid(field.sample, FIELD_BOUNDS, res);
-          return {
-            width: g.width,
-            height: g.height,
-            rgb: equalizedColors(g.data, { colorMap: RAW_TEXTURE_MAP }),
-          };
+        geometry,
+        dataGrid: fieldGrid(field.sample, FIELD_BOUNDS, DATA_GRID_RES),
+        texture: textureFromGrid(texGrid),
+        plot: {
+          x: Float32Array.from(plot.x),
+          y: Float32Array.from(plot.y),
         },
       };
     }
 
     case "heightmap": {
       const hm = value.value as Heightmap;
-      const geometryData = geometryFromHeightmap(hm);
+      const geometry = geometryFromHeightmap(hm);
       const sampleHm = (x: number, _y: number, z: number) => {
         const u = ((x - hm.bounds.minX) / hm.bounds.size) * (hm.width - 1);
         const v = ((z - hm.bounds.minZ) / hm.bounds.size) * (hm.height - 1);
         return sampleHeightGrid(hm.data, hm.width, u, v);
       };
       return {
-        metadata: {
+        kind: "heightmap",
+        meta: {
           name: "Pipeline Output",
           description: "Heightmap produced by the node graph",
-          parameters: {},
           supportedDimensions: ["3d"],
           renderViews: ["mesh3d", "texture2d", "data2d"],
         },
-        calculate: (p: FormulaParams) => sampleHm(p.x ?? 0, 0, p.z ?? 0),
-        createGeometry: () => bufferGeometryFromData(geometryData),
-        createFieldGrid: (res) => fieldGrid(sampleHm, hm.bounds, res),
-        createTexture: (res) => {
-          const g = fieldGrid(sampleHm, hm.bounds, res);
-          return {
-            width: g.width,
-            height: g.height,
-            rgb: equalizedColors(g.data, { colorMap: RAW_TEXTURE_MAP }),
-          };
-        },
+        geometry,
+        dataGrid: fieldGrid(sampleHm, hm.bounds, DATA_GRID_RES),
+        texture: textureFromGrid(fieldGrid(sampleHm, hm.bounds, TEXTURE_RES)),
       };
     }
 
     case "tilegrid": {
-      const grid = value.value;
       return {
-        metadata: {
+        kind: "tilegrid",
+        meta: {
           name: "Pipeline Output",
           description: "Tile grid produced by the node graph",
-          parameters: {},
           supportedDimensions: ["2d"],
           renderViews: ["tileGrid2d", "data2d"],
         },
-        calculate: () => 0,
-        createTileGrid: () => grid,
+        grid: value.value,
       };
     }
 
     case "geometry": {
-      const geometryData = value.value;
-      const raster = rasterizeGeometry(geometryData, 128);
-      const sampleRaster = (x: number, _y: number, z: number) => {
-        const u = ((x - raster.bounds.minX) / raster.bounds.size) * (raster.width - 1);
-        const v = ((z - raster.bounds.minZ) / raster.bounds.size) * (raster.height - 1);
-        return sampleHeightGrid(raster.data, raster.width, u, v);
-      };
+      const geometry = value.value;
       return {
-        metadata: {
+        kind: "geometry",
+        meta: {
           name: "Pipeline Output",
           description: "Geometry produced by the node graph",
-          parameters: {},
           supportedDimensions: ["3d"],
           renderViews: ["mesh3d", "texture2d", "data2d"],
-          supportsVertexColors: !!geometryData.colors,
+          supportsVertexColors: !!geometry.colors,
         },
-        calculate: (p: FormulaParams) => sampleRaster(p.x ?? 0, 0, p.z ?? 0),
-        createGeometry: () => bufferGeometryFromData(geometryData),
-        createFieldGrid: (res) => rasterizeGeometry(geometryData, res),
-        createTexture: (res) => {
-          const g = rasterizeGeometry(geometryData, res);
-          return {
-            width: g.width,
-            height: g.height,
-            rgb: g.colors ?? equalizedColors(g.data, { colorMap: RAW_TEXTURE_MAP }),
-          };
-        },
+        geometry,
+        dataGrid: rasterizeGeometry(geometry, DATA_GRID_RES),
+        texture: textureFromGrid(rasterizeGeometry(geometry, TEXTURE_RES)),
       };
     }
 
     case "number": {
       return {
-        metadata: {
+        kind: "scalar",
+        meta: {
           name: "Pipeline Output",
           description: "Scalar value produced by the node graph",
-          parameters: {},
           supportedDimensions: ["2d"],
           renderViews: ["data2d"],
         },
-        calculate: () => value.value,
-        scalarValue: value.value,
+        value: value.value,
       };
     }
 
