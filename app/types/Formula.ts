@@ -8,6 +8,8 @@ export interface ParameterMetadata {
   step?: number;
   default?: number;
   isLocked?: boolean;
+  /** Optional unit suffix shown next to the value (e.g. "verts", "u", "°"). */
+  unit?: string;
   // Properties for advanced controls:
   controlType?: 'toggle' | 'input' | 'select' | 'slider';
   choices?: number[];

@@ -79,7 +79,8 @@ export function TopBar() {
         <Input
           value={projectName}
           onChange={(e) => setUi({ projectName: e.target.value })}
-          className="h-7 w-48 border-transparent bg-transparent px-1 text-xs hover:border-border focus:border-border"
+          aria-label="Project name"
+          className="h-7 w-52 rounded-md border-transparent bg-transparent px-2 text-xs font-medium shadow-none transition-colors hover:bg-accent/60 focus-visible:bg-transparent"
         />
       </div>
       <div className="flex items-center gap-1">
@@ -109,26 +110,28 @@ export function TopBar() {
               <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Samples
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuContent align="end" className="w-72">
             <DropdownMenuLabel>Load a sample pipeline</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {pipelineSamples.map((sample) => (
-              <DropdownMenuItem
-                key={sample.id}
-                onSelect={() => {
-                  const { nodes: n, edges: ed } = sample.build();
-                  setGraph(n, ed);
-                  setUi({ projectName: sample.name });
-                  toast.success(`Loaded "${sample.name}"`);
-                }}
-                className="flex flex-col items-start gap-0.5"
-              >
-                <span className="text-xs font-medium">{sample.name}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {sample.description}
-                </span>
-              </DropdownMenuItem>
-            ))}
+            <div className="max-h-[min(28rem,60vh)] overflow-y-auto overscroll-contain pr-0.5">
+              {pipelineSamples.map((sample) => (
+                <DropdownMenuItem
+                  key={sample.id}
+                  onSelect={() => {
+                    const { nodes: n, edges: ed } = sample.build();
+                    setGraph(n, ed);
+                    setUi({ projectName: sample.name });
+                    toast.success(`Loaded "${sample.name}"`);
+                  }}
+                  className="flex flex-col items-start gap-0.5"
+                >
+                  <span className="text-xs font-medium">{sample.name}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {sample.description}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
         <input
