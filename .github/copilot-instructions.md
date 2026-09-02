@@ -4,11 +4,14 @@ This project is a TypeScript React app using React Router's full-stack template 
 
 Key facts you must know before making edits:
 
-- Run & build
-  - `bun dev` — start the local dev server (uses `react-router dev` via Vite).
-  - `bun run build` — produce build output (client + server). Build output lives under `build/` and the server entry is `build/server/index.js`.
-  - `bun start` — serve the built server bundle.
-  - `bun typecheck` — runs `react-router typegen && tsc` (use this to catch type issues).
+- Run & build (package manager is **yarn** — `packageManager` in package.json; do not use bun/npm)
+  - `yarn dev` — start the local dev server (`react-router dev` via Vite).
+  - `yarn build` — produce the static client bundle. The app is SPA-only
+    (`ssr: false` in `react-router.config.ts`); output is `build/client/`
+    (`index.html` + `assets/`), no server bundle.
+  - `yarn start` — `vite preview` the built client bundle.
+  - `yarn typecheck` — `react-router typegen && tsc` (use this to catch type issues).
+  - Deploy target is Vercel as a static SPA — see `vercel.json`.
 
 - Important directories and files
   - `app/` — application source. Major subfolders:
