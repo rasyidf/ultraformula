@@ -1,10 +1,14 @@
 import {
   Download,
   Hexagon,
+  PanelBottom,
+  PanelLeft,
+  PanelRight,
   RotateCcw,
   Sparkles,
   Upload,
 } from "lucide-react";
+import { cn } from "~/lib/utils";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { SettingsDialog } from "~/components/settings/SettingsDialog";
@@ -30,6 +34,9 @@ export function TopBar() {
   const reset = usePipelineStore((s) => s.reset);
   const projectName = useUiStore((s) => s.projectName);
   const setUi = useUiStore((s) => s.set);
+  const showLibrary = useUiStore((s) => s.showLibrary);
+  const showGraph = useUiStore((s) => s.showGraph);
+  const showInspector = useUiStore((s) => s.showInspector);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onExport = () => {
@@ -76,6 +83,26 @@ export function TopBar() {
         />
       </div>
       <div className="flex items-center gap-1">
+        <div className="mr-1 flex items-center rounded-md border p-0.5">
+          <PanelToggle
+            label="Library panel  ( [ )"
+            icon={PanelLeft}
+            active={showLibrary}
+            onClick={() => setUi({ showLibrary: !showLibrary })}
+          />
+          <PanelToggle
+            label="Graph panel  ( \\ )"
+            icon={PanelBottom}
+            active={showGraph}
+            onClick={() => setUi({ showGraph: !showGraph })}
+          />
+          <PanelToggle
+            label="Inspector panel  ( ] )"
+            icon={PanelRight}
+            active={showInspector}
+            onClick={() => setUi({ showInspector: !showInspector })}
+          />
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -127,5 +154,33 @@ export function TopBar() {
         <SettingsDialog />
       </div>
     </header>
+  );
+}
+
+function PanelToggle({
+  label,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  icon: typeof PanelLeft;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        "h-6 w-6",
+        active ? "bg-accent text-foreground" : "text-muted-foreground",
+      )}
+      aria-pressed={active}
+      title={`${active ? "Hide" : "Show"} ${label}`}
+      onClick={onClick}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </Button>
   );
 }

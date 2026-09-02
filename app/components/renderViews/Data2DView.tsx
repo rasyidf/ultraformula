@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { ScrollArea } from "~/components/ui/scroll-area";
 import type { RenderViewProps } from "~/types/RenderView";
 
 const GRID_N = 16;
@@ -37,7 +36,7 @@ export function Data2DView({ formula }: RenderViewProps) {
     const counts = new Map<number, number>();
     for (const c of cells) counts.set(c, (counts.get(c) ?? 0) + 1);
     return (
-      <ScrollArea className="h-full">
+      <div className="h-full w-full overflow-auto">
         <div className="p-4">
           <p className="pb-2 text-xs text-muted-foreground">
             {width} × {height} tiles
@@ -64,7 +63,7 @@ export function Data2DView({ formula }: RenderViewProps) {
             </tbody>
           </table>
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
@@ -83,7 +82,7 @@ export function Data2DView({ formula }: RenderViewProps) {
       (bounds.minX + (i / (n - 1)) * bounds.size).toFixed(0);
 
     return (
-      <ScrollArea className="h-full">
+      <div className="h-full w-full overflow-auto">
         <div className="p-3">
           <p className="pb-2 text-[11px] text-muted-foreground">
             {width}×{height} samples · min {min.toFixed(3)} · max{" "}
@@ -130,7 +129,7 @@ export function Data2DView({ formula }: RenderViewProps) {
             </tbody>
           </table>
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 

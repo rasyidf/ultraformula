@@ -2,8 +2,10 @@ import type { Formula } from "~/types/Formula";
 import { getNodeDefinition } from "./nodes";
 import { synthesizeFormula } from "./synthesizeFormula";
 import {
+  DEFAULT_EVAL_ENV,
   isParamHandle,
   paramKeyFromHandle,
+  type EvalEnv,
   type GraphEdge,
   type GraphNode,
   type NodeError,
@@ -40,6 +42,7 @@ function stableStringify(value: unknown): string {
 export function evaluateGraph(
   nodes: GraphNode[],
   edges: GraphEdge[],
+  env: EvalEnv = DEFAULT_EVAL_ENV,
 ): EvalResult {
   const errors: NodeError[] = [];
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
@@ -121,6 +124,7 @@ export function evaluateGraph(
       t: node.type,
       p: effectiveParams,
       c: node.config ?? {},
+      e: env,
       u: upstreamHashes,
     });
     hashes.set(id, hash);
@@ -136,6 +140,7 @@ export function evaluateGraph(
         inputs,
         params: effectiveParams,
         config: node.config ?? {},
+        env,
       });
       outputs.set(id, result);
       cache.set(id, { hash, outputs: result });

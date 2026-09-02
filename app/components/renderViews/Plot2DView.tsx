@@ -4,7 +4,9 @@ import type { RenderViewProps } from "~/types/RenderView";
 import { Cartesian2DCanvas } from "../Cartesian2DCanvas";
 
 export function Plot2DView({ formula, params }: RenderViewProps) {
-  const s = useSceneStore();
+  const showGrid = useSceneStore((s) => s.showGrid);
+  const showAxes = useSceneStore((s) => s.showAxes);
+  const scale = useSceneStore((s) => s.scale);
   const colors = useViewportColors();
 
   return (
@@ -13,9 +15,9 @@ export function Plot2DView({ formula, params }: RenderViewProps) {
       params={params}
       backgroundColor={colors.background}
       lineColor={colors.mesh}
-      showGrid={s.showGrid}
-      showAxes={s.showAxes}
-      scale={s.scale}
+      showGrid={showGrid}
+      showAxes={showAxes}
+      scale={scale}
     />
   );
 }

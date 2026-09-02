@@ -1,6 +1,6 @@
 import { Float, MeshReflectorMaterial, MeshTransmissionMaterial, MeshWobbleMaterial, Outlines } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Formula, FormulaParams } from "~/types/Formula";
 
@@ -36,6 +36,10 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
   const geometry = useMemo(() => {
     return formula.createGeometry?.(params) ?? new THREE.BufferGeometry();
   }, [params, formula]);
+
+  // Free the previous geometry's GPU buffers when it's replaced / unmounted —
+  // a fresh one is built on every graph evaluation.
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   useFrame(({ clock }) => {
     if (autoRotate && meshRef.current) {

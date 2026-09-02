@@ -36,6 +36,9 @@ export interface SceneState {
   showOutlines: boolean;
   outlineColor: string;
   enableVertexColors: boolean;
+  // performance
+  adaptiveDpr: boolean;
+  simResolutionCap: number;
 
   set: (patch: Partial<SceneState>) => void;
   setCameraAxis: (axis: 0 | 1 | 2, value: number) => void;
@@ -66,6 +69,8 @@ const defaults = {
   showOutlines: false,
   outlineColor: "#ffffff",
   enableVertexColors: true,
+  adaptiveDpr: true,
+  simResolutionCap: 200,
 };
 
 export const useSceneStore = create<SceneState>()(

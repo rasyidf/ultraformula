@@ -5,6 +5,8 @@ import type { Formula, FormulaParams } from "./Formula";
 export interface RenderViewProps {
   formula: Formula;
   params: FormulaParams;
+  /** Rendered small in the multi-view thumbnail strip — drop expensive extras. */
+  thumbnail?: boolean;
 }
 
 /** One way of displaying a formula (a 3D mesh, a 2D plot, a tile grid, ...). */

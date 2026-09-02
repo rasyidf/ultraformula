@@ -69,8 +69,8 @@ export function GraphPanel({ errors }: Props) {
   }, [selectedNodeId, duplicateNode, selectAllNodes, autoArrange]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-3 py-1 text-xs text-muted-foreground">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b px-3 py-1 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <span className="font-medium text-foreground">Pipeline graph</span>
           <span className="hidden md:inline">{nodeCount} nodes</span>
@@ -90,7 +90,7 @@ export function GraphPanel({ errors }: Props) {
           </Button>
         </div>
       </div>
-      <div className="relative flex-1">
+      <div className="relative min-h-0 flex-1">
         <PipelineCanvas errorNodeIds={errorNodeIds} />
       </div>
     </div>

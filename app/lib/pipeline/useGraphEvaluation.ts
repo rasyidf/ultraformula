@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { usePipelineStore } from "~/stores/pipelineStore";
+import { useSceneStore } from "~/stores/sceneStore";
+import { useUiStore } from "~/stores/uiStore";
 import { evaluateGraph, type EvalResult } from "./evaluate";
 import { toGraphEdges, toGraphNodes } from "./graphHelpers";
 
-export type EvalStatus = "idle" | "evaluating" | "error";
+export type EvalStatus = "idle" | "evaluating" | "error" | "paused";
 
 const EMPTY: EvalResult = { formula: null, errors: [], outputValue: null };
 
@@ -15,15 +17,27 @@ const EMPTY: EvalResult = { formula: null, errors: [], outputValue: null };
 export function useGraphEvaluation() {
   const nodes = usePipelineStore((s) => s.nodes);
   const edges = usePipelineStore((s) => s.edges);
+  const debounceMs = useUiStore((s) => s.evalDebounceMs);
+  const paused = useUiStore((s) => s.evalPaused);
+  const simResolutionCap = useSceneStore((s) => s.simResolutionCap);
+
+  const graphNodes = useMemo(() => toGraphNodes(nodes), [nodes]);
+  const graphEdges = useMemo(() => toGraphEdges(edges), [edges]);
+  const env = useMemo(() => ({ simResolutionCap }), [simResolutionCap]);
+
   const [result, setResult] = useState<EvalResult>(EMPTY);
   const [status, setStatus] = useState<EvalStatus>("idle");
 
   useEffect(() => {
+    if (paused) {
+      setStatus("paused");
+      return;
+    }
     setStatus("evaluating");
     const handle = setTimeout(() => {
       let r: EvalResult;
       try {
-        r = evaluateGraph(toGraphNodes(nodes), toGraphEdges(edges));
+        r = evaluateGraph(graphNodes, graphEdges, env);
       } catch (err) {
         r = {
           formula: null,
@@ -33,11 +47,13 @@ export function useGraphEvaluation() {
           ],
         };
       }
-      setResult(r);
-      setStatus(r.errors.length > 0 ? "error" : "idle");
-    }, 120);
+      startTransition(() => {
+        setResult(r);
+        setStatus(r.errors.length > 0 ? "error" : "idle");
+      });
+    }, Math.max(0, debounceMs));
     return () => clearTimeout(handle);
-  }, [nodes, edges]);
+  }, [graphNodes, graphEdges, env, debounceMs, paused]);
 
   return { ...result, status };
 }

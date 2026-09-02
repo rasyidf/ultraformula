@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { resolveActiveView } from "~/lib/renderViews";
 import type { Formula } from "~/types/Formula";
 import { useSceneStore } from "~/stores/sceneStore";
@@ -32,5 +32,15 @@ export function FormulaCanvasWrapper({ formula, message }: Props) {
   }
 
   const { Component } = activeView;
-  return <Component formula={formula} params={EMPTY_PARAMS} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          loading view…
+        </div>
+      }
+    >
+      <Component formula={formula} params={EMPTY_PARAMS} />
+    </Suspense>
+  );
 }

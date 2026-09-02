@@ -1,11 +1,18 @@
 import { Cuboid, Grid2x2, Image, LineChart, Table2 } from "lucide-react";
+import { lazy } from "react";
 import { Data2DView } from "~/components/renderViews/Data2DView";
-import { Mesh3DView } from "~/components/renderViews/Mesh3DView";
 import { Plot2DView } from "~/components/renderViews/Plot2DView";
 import { Texture2DView } from "~/components/renderViews/Texture2DView";
 import { TileGrid2DView } from "~/components/renderViews/TileGrid2DView";
 import type { Formula } from "~/types/Formula";
 import type { RenderView } from "~/types/RenderView";
+
+// three/drei is heavy — only load it when a 3D view is actually shown.
+const Mesh3DView = lazy(() =>
+  import("~/components/renderViews/Mesh3DView").then((m) => ({
+    default: m.Mesh3DView,
+  })),
+);
 
 /** Fallback when a formula has no explicit `metadata.renderViews`. */
 function inferViews(dimensions: ("2d" | "3d")[]): string[] {

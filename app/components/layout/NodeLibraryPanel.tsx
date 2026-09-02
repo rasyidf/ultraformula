@@ -53,8 +53,8 @@ export function NodeLibraryPanel() {
   }, [search]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b p-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b p-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -66,7 +66,7 @@ export function NodeLibraryPanel() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 max-h-[calc(100vh-8rem)]">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-2">
           {grouped.map(({ category, items }) => (
             <div key={category} className="mb-3">

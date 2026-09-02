@@ -56,11 +56,20 @@ export interface PortSpec {
   type: PortType;
 }
 
+/** Global evaluation knobs, not tied to any one node. */
+export interface EvalEnv {
+  /** Upper bound on Heightmap / erosion grid resolution (perf guard). */
+  simResolutionCap: number;
+}
+
+export const DEFAULT_EVAL_ENV: EvalEnv = { simResolutionCap: 256 };
+
 export interface EvalContext {
   inputs: Record<string, PortValue | undefined>;
   params: FormulaParams;
   /** Free-text config values (e.g. an expression string). */
   config: Record<string, string>;
+  env: EvalEnv;
 }
 
 /** A non-numeric (string) config field rendered as a textarea in the inspector. */

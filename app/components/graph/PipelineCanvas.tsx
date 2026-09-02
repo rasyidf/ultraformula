@@ -48,6 +48,11 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
     ? getNodeDefinition(draggingNodeType)
     : undefined;
 
+  const miniMapNodeColor = useCallback((n: { data: unknown }) => {
+    const def = getNodeDefinition((n.data as { nodeType: string }).nodeType);
+    return def ? CATEGORY_COLOR[def.category] : "#64748b";
+  }, []);
+
   const outputPortType = useCallback(
     (nodeId: string, handleId?: string | null): PortType | undefined => {
       const node = nodes.find((n) => n.id === nodeId);
@@ -187,16 +192,7 @@ export function PipelineCanvas({ errorNodeIds }: Props) {
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />
-        <MiniMap
-          pannable
-          zoomable
-          nodeColor={(n) => {
-            const def = getNodeDefinition(
-              (n.data as { nodeType: string }).nodeType,
-            );
-            return def ? CATEGORY_COLOR[def.category] : "#64748b";
-          }}
-        />
+        <MiniMap pannable zoomable nodeColor={miniMapNodeColor} />
       </ReactFlow>
 
       {draggingDef && preview && (
