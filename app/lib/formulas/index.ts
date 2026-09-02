@@ -1,7 +1,5 @@
 import type { Formula } from "~/types/Formula";
 import { CellularNoiseFormula } from "./CellularNoiseFormula";
-import { DomainWarpFormula } from "./DomainWarpFormula";
-import { HydraulicErosionFormula } from "./HydraulicErosionFormula";
 import { WaveFunctionCollapseFormula } from "./WaveFunctionCollapseFormula";
 import { GielisFormula } from "./GielisFormula";
 import { GyroidFormula } from "./GyroidFormula";
@@ -17,8 +15,6 @@ import { LissajousFormula } from "./LissajousFormula";
 export const formulaRegistry: Record<string, Formula> = {
   gielis: new GielisFormula(),
   terrainGen: new TerrainFormula(),
-  domainWarp: new DomainWarpFormula(),
-  hydraulicErosion: new HydraulicErosionFormula(),
   waveFunctionCollapse: new WaveFunctionCollapseFormula(),
   sineInterference: new SineInterferenceFormula(),
   gyroid: new GyroidFormula(),

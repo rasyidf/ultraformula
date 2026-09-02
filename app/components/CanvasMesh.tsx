@@ -1,6 +1,6 @@
 import { Float, MeshReflectorMaterial, MeshTransmissionMaterial, MeshWobbleMaterial, Outlines } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Formula, FormulaParams } from "~/types/Formula";
 
@@ -37,33 +37,45 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
     return formula.createGeometry?.(params) ?? new THREE.BufferGeometry();
   }, [params, formula]);
 
+  // Free the previous geometry's GPU buffers when it's replaced / unmounted —
+  // a fresh one is built on every graph evaluation.
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
   useFrame(({ clock }) => {
     if (autoRotate && meshRef.current) {
       meshRef.current.rotation.y = clock.getElapsedTime() * 0.2;
     }
   });
 
+  // Only honour vertex colours when the geometry actually carries a colour
+  // attribute; otherwise fall back to the (theme-driven) mesh colour.
+  const useVertexColors = enableVertexColors && !!formula.metadata.supportsVertexColors;
+  const materialColor = useVertexColors ? "#ffffff" : color;
+
   const renderMesh = () => {
     const mesh = (
       <mesh ref={meshRef} geometry={geometry} scale={scale}>
         {materialType === "standard" && (
-          <meshStandardMaterial 
-            color={enableVertexColors ? "#ffffff" : color} 
+          <meshStandardMaterial
+            color={materialColor}
             wireframe={wireframe}
-            vertexColors={enableVertexColors && formula.metadata.supportsVertexColors}
+            vertexColors={useVertexColors}
+            roughness={0.85}
+            metalness={0.04}
+            flatShading={false}
           />
         )}
         {materialType === "wobble" && (
-          <MeshWobbleMaterial 
-            color={enableVertexColors ? "#ffffff" : color}
-            factor={0.6} 
-            speed={1} 
+          <MeshWobbleMaterial
+            color={materialColor}
+            factor={0.6}
+            speed={1}
             wireframe={wireframe}
           />
         )}
         {materialType === "transmission" && (
           <MeshTransmissionMaterial
-            color={enableVertexColors ? "#ffffff" : color}
+            color={materialColor}
             resolution={256}
             thickness={0.5}
             roughness={0.15}
@@ -79,7 +91,7 @@ export const CanvasMesh: React.FC<SuperformulaMeshProps> = ({
         )}
         {materialType === "reflector" && (
           <MeshReflectorMaterial
-            color={enableVertexColors ? "#ffffff" : color}
+            color={materialColor}
             roughness={0.5}
             metalness={0.8}
             blur={[300, 100]}

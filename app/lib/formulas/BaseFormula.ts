@@ -1,15 +1,12 @@
-import * as THREE from "three";
 import type { Formula, FormulaMetadata, FormulaParams } from "~/types/Formula";
 
 export abstract class BaseFormula implements Formula {
   abstract metadata: FormulaMetadata;
   abstract calculate(params: FormulaParams): number;
 
-  // 3D formulas override this. Non-mesh formulas (e.g. tile-grid / WFC) inherit
-  // the empty default and are never offered the 3D mesh view.
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    return new THREE.BufferGeometry();
-  }
+  // The display mesh for parametric formulas is built on the main thread by
+  // `app/lib/formulas/parametricGeometry.ts` (keyed by registry id), so the
+  // graph-evaluation Worker never loads THREE.
 
   // Default 2D methods that can be overridden by subclasses
   calculate2D(x: number, y: number, params: FormulaParams): number {
@@ -37,21 +34,5 @@ export abstract class BaseFormula implements Formula {
     }
     
     return { x, y };
-  }
-
-  // Default color calculation method
-  calculateColor(position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }): THREE.Color {
-    // Default: rainbow gradient based on horizontal angle
-    if (uv) {
-      const hue = uv.u;
-      const saturation = 0.7;
-      const lightness = 0.5 + Math.sin(uv.v * Math.PI) * 0.2;
-      return new THREE.Color().setHSL(hue, saturation, lightness);
-    }
-    
-    // Fallback: color based on position angle
-    const angle = Math.atan2(position.z, position.x);
-    const hue = (angle + Math.PI) / (Math.PI * 2);
-    return new THREE.Color().setHSL(hue, 0.7, 0.5);
   }
 }

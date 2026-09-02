@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
 
@@ -44,86 +43,6 @@ export class MobiusFormula extends BaseFormula {
     // This is not really a radius calculation, but we return a value
     // to satisfy the interface requirements
     return radius * width;
-  }
-
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    const { radius, width, twist } = params;
-    const segments = 100;
-    const sides = 20;
-    
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    const normals: number[] = [];
-    const uvs: number[] = [];
-    const colors: number[] = [];
-    
-    // Create vertices
-    for (let i = 0; i <= segments; i++) {
-      const u = i / segments;
-      const angle = u * Math.PI * 2;
-      
-      for (let j = 0; j <= sides; j++) {
-        const v = j / sides;
-        const w = v - 0.5; // Range from -0.5 to 0.5
-        
-        // Calculate the position on the Mobius strip
-        const x = (radius + w * width * Math.cos(twist * angle / 2)) * Math.cos(angle);
-        const y = (radius + w * width * Math.cos(twist * angle / 2)) * Math.sin(angle);
-        const z = w * width * Math.sin(twist * angle / 2);
-        
-        vertices.push(x, z, y); // Swap y and z to lay the strip horizontally
-        
-        // Calculate normal vector (simplified)
-        const nx = Math.cos(angle);
-        const ny = Math.sin(angle);
-        const nz = 0;
-        
-        normals.push(nx, nz, ny);
-        
-        // UV coordinates
-        uvs.push(u, v);
-        
-        // Color based on position along the strip (shows the twist)
-        const position = new THREE.Vector3(x, z, y);
-        const color = this.calculateColor(position, params, { u, v });
-        colors.push(color.r, color.g, color.b);
-      }
-    }
-    
-    // Create indices
-    for (let i = 0; i < segments; i++) {
-      for (let j = 0; j < sides; j++) {
-        const a = i * (sides + 1) + j;
-        const b = a + 1;
-        const c = a + (sides + 1);
-        const d = c + 1;
-        
-        indices.push(a, b, c);
-        indices.push(c, b, d);
-      }
-    }
-    
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geometry.setIndex(indices);
-    
-    return geometry;
-  }
-
-  calculateColor(position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }): THREE.Color {
-    // Color the Mobius strip with a gradient that shows the twist
-    if (uv) {
-      // Create a gradient based on position along strip (u) and across width (v)
-      const hue = uv.u; // Rainbow gradient along the strip
-      const saturation = 0.8;
-      const lightness = 0.4 + uv.v * 0.4; // Lighter on one edge, darker on the other
-      return new THREE.Color().setHSL(hue, saturation, lightness);
-    }
-    
-    return new THREE.Color(0xffffff);
   }
 
   // 2D methods for Mobius strip visualization

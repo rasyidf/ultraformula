@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 // Assume WorleyNoise is implemented similar to your PerlinNoise
 import { WorleyNoise } from "./noises/WorleyNoise";
@@ -17,6 +16,7 @@ export class CellularNoiseFormula extends BaseFormula {
         min: 0.1,
         max: 10,
         step: 0.1,
+        default: 4,
         description: "Cell size",
         isLocked: false
       },
@@ -25,6 +25,7 @@ export class CellularNoiseFormula extends BaseFormula {
         min: 1,
         max: 8,
         step: 1,
+        default: 2,
         description: "Noise complexity",
         isLocked: false
       },
@@ -33,6 +34,7 @@ export class CellularNoiseFormula extends BaseFormula {
         min: 0.1,
         max: 1,
         step: 0.1,
+        default: 0.5,
         description: "Noise decay",
         isLocked: false
       },
@@ -41,6 +43,7 @@ export class CellularNoiseFormula extends BaseFormula {
         min: 1,
         max: 3,
         step: 0.1,
+        default: 2,
         description: "Noise frequency",
         isLocked: false
       },
@@ -49,6 +52,7 @@ export class CellularNoiseFormula extends BaseFormula {
         min: 0,
         max: 9999,
         step: 1,
+        default: 15,
         description: "Random variation",
         isLocked: false
       }
@@ -69,7 +73,4 @@ export class CellularNoiseFormula extends BaseFormula {
     ) * 2; // Multiply by 2 to make the pattern more visible
   }
 
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    return WorleyNoise.createTerrainGeometry(params, (p) => this.calculate(p));
-  }
 }

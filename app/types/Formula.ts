@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import type * as THREE from "three";
 
 export interface ParameterMetadata {
   name: string;
@@ -8,6 +8,8 @@ export interface ParameterMetadata {
   step?: number;
   default?: number;
   isLocked?: boolean;
+  /** Optional unit suffix shown next to the value (e.g. "verts", "u", "°"). */
+  unit?: string;
   // Properties for advanced controls:
   controlType?: 'toggle' | 'input' | 'select' | 'slider';
   choices?: number[];
@@ -58,6 +60,25 @@ export interface Formula {
   createPlotData?: (params: FormulaParams, resolution: number) => { x: number[]; y: number[] };
   // Tile-grid / constraint-based methods
   createTileGrid?: (params: FormulaParams) => TileGridResult;
+  /**
+   * Sample the field onto a square grid for the 2D texture / data-table views.
+   * `bounds` is the world-space footprint the grid covers.
+   */
+  createFieldGrid?: (resolution: number) => {
+    width: number;
+    height: number;
+    data: Float32Array;
+    bounds: { minX: number; minZ: number; size: number };
+  };
+  /** Colourised raster of the field for the 2D texture view. */
+  createTexture?: (resolution: number) => {
+    width: number;
+    height: number;
+    /** rgb triples, 0..1, row-major */
+    rgb: Float32Array;
+  };
+  /** Single scalar output (from a Value / Seed / Random node into Output). */
+  scalarValue?: number;
   // Color function for color-coded parts
   calculateColor?: (position: THREE.Vector3, params: FormulaParams, uv?: { u: number; v: number }) => THREE.Color;
 }

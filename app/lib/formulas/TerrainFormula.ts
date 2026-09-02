@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { BaseFormula } from "./BaseFormula";
 import { PerlinNoise, type FbmMode } from "./noises/PerlinNoise";
 import type { FormulaMetadata, FormulaParams } from "~/types/Formula";
@@ -19,6 +18,7 @@ export class TerrainFormula extends BaseFormula {
         min: 1,
         max: 100,
         step: 1,
+        default: 45,
         isLocked: false
       },
       octaves: {
@@ -27,6 +27,7 @@ export class TerrainFormula extends BaseFormula {
         min: 1,
         max: 10,
         step: 1,
+        default: 5,
         isLocked: false
       },
       persistence: {
@@ -35,6 +36,7 @@ export class TerrainFormula extends BaseFormula {
         min: 0.1,
         max: 1,
         step: 0.1,
+        default: 0.5,
         isLocked: false
       },
       lacunarity: {
@@ -43,6 +45,7 @@ export class TerrainFormula extends BaseFormula {
         min: 1,
         max: 10,
         step: 1,
+        default: 2,
         isLocked: false
       },
       seed: {
@@ -51,6 +54,7 @@ export class TerrainFormula extends BaseFormula {
         min: 0,
         max: 1000,
         step: 1,
+        default: 7,
         isLocked: false
       },
       fbmMode: {
@@ -74,7 +78,4 @@ export class TerrainFormula extends BaseFormula {
     return PerlinNoise.calculate(x / scale, y / scale, z / scale, octaves, persistence, lacunarity, seed, mode);
   }
 
-  createGeometry(params: FormulaParams): THREE.BufferGeometry {
-    return PerlinNoise.createTerrainGeometry(params, this.calculate.bind(this));
-  }
 }
