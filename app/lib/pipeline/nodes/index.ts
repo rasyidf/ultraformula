@@ -18,7 +18,7 @@ import {
   thresholdNode,
   transformNode,
 } from "./modifiers";
-import { colorizeNode, outputNode } from "./output";
+import { colorizeNode, outputNode, sphereNode } from "./output";
 import { erosionNode, heightmapNode, thermalErosionNode } from "./simulation";
 import { tileToFieldNode } from "./tiles";
 
@@ -59,8 +59,8 @@ register(combineNode, tileToFieldNode); // Combine
 register(heightmapNode); // Bake
 register(erosionNode, thermalErosionNode); // Erosion
 
-// --- Output: theme + terminal -------------------------------------------
-register(colorizeNode, outputNode);
+// --- Output: shape + theme + terminal ----------------------------------
+register(colorizeNode, sphereNode, outputNode);
 
 export function getNodeDefinition(type: string): NodeDefinition | undefined {
   return nodeRegistry[type];

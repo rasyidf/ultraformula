@@ -25,6 +25,15 @@ export function InspectorPanel({ formula }: { formula: Formula | null }) {
       .sort()
       .join("|"),
   );
+  const connectedInputKey = usePipelineStore((s) =>
+    s.edges
+      .filter(
+        (e) => e.target === s.selectedNodeId && !isParamHandle(e.targetHandle),
+      )
+      .map((e) => e.targetHandle)
+      .sort()
+      .join("|"),
+  );
 
   if (!(selectedNodeId && node)) {
     return <NoSelection formula={formula} />;
@@ -32,6 +41,13 @@ export function InspectorPanel({ formula }: { formula: Formula | null }) {
 
   const def = getNodeDefinition(node.data.nodeType);
   const linked = new Set(linkedParamKey ? linkedParamKey.split("|") : []);
+  const connectedInputs = new Set(
+    connectedInputKey ? connectedInputKey.split("|") : [],
+  );
+  const inactive = new Set(def?.inactiveParams?.(connectedInputs) ?? []);
+  const paramEntries = Object.entries(def?.params ?? {}).filter(
+    ([key]) => !inactive.has(key),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -80,7 +96,7 @@ export function InspectorPanel({ formula }: { formula: Formula | null }) {
           ))}
 
           <div className="space-y-4">
-            {Object.entries(def?.params ?? {}).map(([key, meta]) => (
+            {paramEntries.map(([key, meta]) => (
               <div key={key}>
                 {linked.has(key) && (
                   <p className="mb-1 text-[10px] font-medium uppercase text-sky-500">
@@ -96,7 +112,7 @@ export function InspectorPanel({ formula }: { formula: Formula | null }) {
                 />
               </div>
             ))}
-            {def && Object.keys(def.params).length === 0 && !def.configFields && (
+            {paramEntries.length === 0 && !def?.configFields && (
               <p className="text-xs text-muted-foreground">This node has no settings.</p>
             )}
           </div>

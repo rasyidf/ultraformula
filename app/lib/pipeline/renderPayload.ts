@@ -1,10 +1,6 @@
 import type { TileGridResult } from "~/types/Formula";
 import { equalizedColors } from "./colorMaps";
-import {
-  EROSION_WORLD_MIN,
-  EROSION_WORLD_SIZE,
-  sampleHeightGrid,
-} from "./ops/erosion";
+import { sampleHeightGrid, worldBounds } from "./ops/erosion";
 import {
   geometryFromHeightmap,
   gridGeometryFromField,
@@ -19,11 +15,8 @@ import type { GeometryData, Heightmap, PortValue } from "./types";
  * turns it back into a `Formula` via `payloadToFormula`.
  */
 
-export const FIELD_BOUNDS = {
-  minX: EROSION_WORLD_MIN,
-  minZ: EROSION_WORLD_MIN,
-  size: EROSION_WORLD_SIZE,
-};
+/** Fixed extent for raw (un-baked) field previews. */
+export const FIELD_BOUNDS = worldBounds();
 
 /** Neutral map for raw (un-colorized) field / heightmap previews. */
 const RAW_TEXTURE_MAP = "viridis" as const;

@@ -1,5 +1,7 @@
 import { BIOME_TILES } from "~/lib/wfc/tilesets/biome";
-import { EROSION_WORLD_MIN, EROSION_WORLD_SIZE } from "../ops/erosion";
+import { DEFAULT_WORLD_SIZE } from "../ops/erosion";
+
+const WORLD_MIN = -DEFAULT_WORLD_SIZE / 2;
 import type { Field, NodeDefinition, PortValue } from "../types";
 import { num, select, toggle } from "./_shared";
 
@@ -54,8 +56,8 @@ export const tileToFieldNode: NodeDefinition = {
 
     const field: Field = {
       sample: (x, _y, z) => {
-        const u = ((x - EROSION_WORLD_MIN) / EROSION_WORLD_SIZE) * (grid.width - 1);
-        const v = ((z - EROSION_WORLD_MIN) / EROSION_WORLD_SIZE) * (grid.height - 1);
+        const u = ((x - WORLD_MIN) / DEFAULT_WORLD_SIZE) * (grid.width - 1);
+        const v = ((z - WORLD_MIN) / DEFAULT_WORLD_SIZE) * (grid.height - 1);
         if (!smooth || mode === 1) {
           return cellValue(Math.round(u), Math.round(v)) * hs;
         }

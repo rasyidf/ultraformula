@@ -57,12 +57,19 @@ export const PipelineNode = memo(function PipelineNode({
       .sort()
       .join("|"),
   );
+  const connectedInputKey = usePipelineStore((s) =>
+    s.edges
+      .filter((e) => e.target === id && !isParamHandle(e.targetHandle))
+      .map((e) => e.targetHandle)
+      .sort()
+      .join("|"),
+  );
 
   const expanded = !!nodeData.expanded;
 
   useEffect(() => {
     updateNodeInternals(id);
-  }, [id, expanded, linkedKey, updateNodeInternals]);
+  }, [id, expanded, linkedKey, connectedInputKey, updateNodeInternals]);
 
   if (!def) {
     return (
@@ -73,8 +80,12 @@ export const PipelineNode = memo(function PipelineNode({
   }
 
   const linked = new Set(linkedKey ? linkedKey.split("|") : []);
+  const connectedInputs = new Set(
+    connectedInputKey ? connectedInputKey.split("|") : [],
+  );
+  const inactive = new Set(def.inactiveParams?.(connectedInputs) ?? []);
   const color = CATEGORY_COLOR[def.category];
-  const params = Object.entries(def.params);
+  const params = Object.entries(def.params).filter(([k]) => !inactive.has(k));
   const shownParams = expanded
     ? params
     : params.filter(([k]) => linked.has(k));
@@ -224,11 +235,13 @@ function ParamMiniControl({
 }) {
   const v = value ?? meta.default ?? meta.min ?? 0;
   const stop = (e: React.PointerEvent) => e.stopPropagation();
+  const fieldBase =
+    "nodrag h-[22px] rounded-md border border-input bg-background/60 px-1.5 text-[10px] outline-none transition-colors hover:border-ring/60 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40";
 
   if (meta.controlType === "select") {
     return (
       <select
-        className="nodrag max-w-[110px] rounded border bg-background px-1 py-0.5 text-[10px]"
+        className={cn(fieldBase, "max-w-[116px] appearance-none pr-1")}
         value={String(v)}
         onPointerDown={stop}
         onChange={(e) => onChange(Number(e.target.value))}
@@ -246,7 +259,7 @@ function ParamMiniControl({
     return (
       <input
         type="checkbox"
-        className="nodrag accent-primary"
+        className="nodrag size-3.5 cursor-pointer rounded border-input accent-primary"
         checked={!!v}
         onPointerDown={stop}
         onChange={(e) => onChange(e.target.checked ? 1 : 0)}
@@ -257,13 +270,21 @@ function ParamMiniControl({
   return (
     <input
       type="number"
-      className="nodrag w-16 rounded border bg-background px-1 py-0.5 text-right text-[10px] tabular-nums"
-      value={v}
+      inputMode="decimal"
+      className={cn(
+        fieldBase,
+        "w-16 text-right tabular-nums",
+        "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+      )}
+      value={Number.isInteger(v) ? v : Number(v.toFixed(4))}
       min={meta.min}
       max={meta.max}
       step={meta.step ?? 0.01}
       onPointerDown={stop}
-      onChange={(e) => onChange(Number(e.target.value))}
+      onChange={(e) => {
+        const n = Number(e.target.value);
+        if (e.target.value !== "" && Number.isFinite(n)) onChange(n);
+      }}
     />
   );
 }

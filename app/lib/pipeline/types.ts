@@ -110,6 +110,14 @@ export interface NodeDefinition {
   outputs: PortSpec[];
   params: Record<string, ParameterMetadata>;
   configFields?: ConfigField[];
+  /**
+   * Optional: given the set of currently-connected (non-param) input port ids,
+   * return the param keys that have no effect and should be hidden from the
+   * inspector and the node body. Lets a node drop knobs that only apply on one
+   * of several input paths (e.g. Colorize's grid params when a Heightmap — which
+   * already fixes resolution and extent — is wired in).
+   */
+  inactiveParams?: (connectedInputs: ReadonlySet<string>) => readonly string[];
   evaluate: (ctx: EvalContext) => Record<string, PortValue>;
 }
 

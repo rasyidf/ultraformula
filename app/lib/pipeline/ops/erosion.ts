@@ -4,9 +4,22 @@
  * https://www.firespark.de/resources/downloads/implementation%20of%20a%20methode%20for%20hydraulic%20erosion.pdf
  */
 
-// World footprint shared with the grid geometry sampler: x,z in [-25, 25).
-export const EROSION_WORLD_MIN = -25;
-export const EROSION_WORLD_SIZE = 50;
+/**
+ * Canonical default world footprint: a square in x,z centred on the origin.
+ * Bake nodes expose this as an adjustable `world size` param; everything that
+ * still needs a fixed extent (raw-field previews, tile→field mapping) uses this
+ * default.
+ */
+export const DEFAULT_WORLD_SIZE = 50;
+
+/** Bounds POJO for a centred square world of the given size. */
+export function worldBounds(size: number = DEFAULT_WORLD_SIZE): {
+  minX: number;
+  minZ: number;
+  size: number;
+} {
+  return { minX: -size / 2, minZ: -size / 2, size };
+}
 
 const INERTIA = 0.05;
 const CAPACITY_FACTOR = 4;
@@ -23,16 +36,18 @@ export interface ErosionParams {
   evaporationRate: number;
 }
 
-/** Sample a field onto a res x res grid over the erosion world bounds. */
+/** Sample a field onto a res x res grid over a centred square world. */
 export function materializeField(
   sample: (x: number, y: number, z: number) => number,
   res: number,
+  worldSize: number = DEFAULT_WORLD_SIZE,
 ): Float32Array {
   const heights = new Float32Array(res * res);
+  const min = -worldSize / 2;
   for (let y = 0; y < res; y++) {
     for (let x = 0; x < res; x++) {
-      const worldX = EROSION_WORLD_MIN + (x / (res - 1)) * EROSION_WORLD_SIZE;
-      const worldZ = EROSION_WORLD_MIN + (y / (res - 1)) * EROSION_WORLD_SIZE;
+      const worldX = min + (x / (res - 1)) * worldSize;
+      const worldZ = min + (y / (res - 1)) * worldSize;
       heights[y * res + x] = sample(worldX, 0, worldZ);
     }
   }

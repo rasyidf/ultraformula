@@ -369,4 +369,42 @@ export const pipelineSamples: PipelineSample[] = [
       return g.build();
     },
   },
+  {
+    id: "noise-planet",
+    name: "Noise Planet",
+    description: "3D Perlin sampled on a sphere → continents, seas and ice caps",
+    build: () => {
+      const g = new GraphBuilder();
+      const p = g.add("gen:terrainGen", {
+        scale: 40, octaves: 6, persistence: 0.5, lacunarity: 2.1, seed: 9, fbmMode: 0,
+      });
+      const lv = g.add("levels", { gamma: 1.15 });
+      const sp = g.add("sphere", {
+        colorMap: 1, detail: 5, radius: 10, heightScale: 1.9, noiseScale: 34, seaLevel: 0.46,
+      });
+      const out = g.add("output");
+      g.link(p, "field", lv, "in");
+      g.link(lv, "out", sp, "field");
+      g.link(sp, "out", out, "in");
+      return g.build();
+    },
+  },
+  {
+    id: "ridged-moon",
+    name: "Ridged Moon",
+    description: "Ridged fBm on a sphere with no oceans — a cratered rocky body",
+    build: () => {
+      const g = new GraphBuilder();
+      const p = g.add("gen:terrainGen", {
+        scale: 30, octaves: 7, persistence: 0.55, lacunarity: 2.2, seed: 21, fbmMode: 1,
+      });
+      const sp = g.add("sphere", {
+        colorMap: 3, detail: 5, radius: 9, heightScale: 1.5, noiseScale: 40, seaLevel: 0,
+      });
+      const out = g.add("output");
+      g.link(p, "field", sp, "field");
+      g.link(sp, "out", out, "in");
+      return g.build();
+    },
+  },
 ];
